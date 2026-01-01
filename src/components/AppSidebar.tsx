@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import {
   LayoutDashboard,
@@ -9,9 +10,14 @@ import {
   Shield,
   FileSearch,
   BarChart3,
+  Menu,
+  X,
 } from 'lucide-react';
 import { useAuth, UserRole } from '@/contexts/AuthContext';
 import { cn } from '@/lib/utils';
+import { useIsMobile } from '@/hooks/use-mobile';
+import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
+import { Button } from '@/components/ui/button';
 
 interface NavItem {
   title: string;
@@ -30,7 +36,7 @@ const navItems: NavItem[] = [
   { title: 'Configurações', icon: Settings, href: '/settings', roles: ['admin', 'employee'] },
 ];
 
-export function AppSidebar() {
+function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
   const { user, logout } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
@@ -44,8 +50,13 @@ export function AppSidebar() {
     navigate('/login');
   };
 
+  const handleNavClick = (href: string) => {
+    navigate(href);
+    onNavigate?.();
+  };
+
   return (
-    <aside className="fixed left-0 top-0 z-40 h-screen w-64 bg-sidebar text-sidebar-foreground border-r border-sidebar-border flex flex-col">
+    <div className="flex h-full flex-col bg-sidebar text-sidebar-foreground">
       {/* Logo */}
       <div className="flex items-center gap-3 px-6 py-5 border-b border-sidebar-border">
         <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-sidebar-primary">
@@ -65,7 +76,7 @@ export function AppSidebar() {
             return (
               <li key={item.href}>
                 <button
-                  onClick={() => navigate(item.href)}
+                  onClick={() => handleNavClick(item.href)}
                   className={cn(
                     'flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-200',
                     isActive
@@ -91,7 +102,7 @@ export function AppSidebar() {
           <div className="flex-1 min-w-0">
             <p className="text-sm font-medium text-sidebar-foreground truncate">{user.name}</p>
             <p className="text-xs text-sidebar-foreground/60 capitalize">
-              {user.role === 'admin' ? 'Administrador' : user.role === 'employee' ? 'Funcionário' : 'Cliente'}
+              {user.role === 'admin' ? 'Administrador' : 'Funcionário'}
             </p>
           </div>
         </div>
@@ -103,6 +114,61 @@ export function AppSidebar() {
           Sair
         </button>
       </div>
+    </div>
+  );
+}
+
+export function AppSidebar() {
+  const { user } = useAuth();
+  const isMobile = useIsMobile();
+  const [open, setOpen] = useState(false);
+
+  if (!user) return null;
+
+  // Mobile: Sheet drawer
+  if (isMobile) {
+    return (
+      <Sheet open={open} onOpenChange={setOpen}>
+        <SheetTrigger asChild>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="fixed left-4 top-4 z-50 lg:hidden"
+          >
+            <Menu className="h-6 w-6" />
+          </Button>
+        </SheetTrigger>
+        <SheetContent side="left" className="w-64 p-0 border-r border-sidebar-border">
+          <SidebarContent onNavigate={() => setOpen(false)} />
+        </SheetContent>
+      </Sheet>
+    );
+  }
+
+  // Desktop: Fixed sidebar
+  return (
+    <aside className="fixed left-0 top-0 z-40 h-screen w-64 border-r border-sidebar-border hidden lg:block">
+      <SidebarContent />
     </aside>
+  );
+}
+
+export function MobileSidebarTrigger() {
+  const isMobile = useIsMobile();
+  const [open, setOpen] = useState(false);
+
+  if (!isMobile) return null;
+
+  return (
+    <Sheet open={open} onOpenChange={setOpen}>
+      <SheetTrigger asChild>
+        <Button variant="ghost" size="icon">
+          <Menu className="h-5 w-5" />
+        </Button>
+      </SheetTrigger>
+      <SheetContent side="left" className="w-64 p-0 border-r border-sidebar-border">
+        <SidebarContent onNavigate={() => setOpen(false)} />
+      </SheetContent>
+    </Sheet>
   );
 }

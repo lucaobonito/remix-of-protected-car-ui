@@ -1,4 +1,4 @@
-import { ClipboardCheck, CheckCircle, Clock, XCircle } from 'lucide-react';
+import { ClipboardCheck, CheckCircle, Clock, XCircle, Plus } from 'lucide-react';
 import { StatsCard } from '@/components/StatsCard';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -45,104 +45,117 @@ export function EmployeeDashboard() {
   };
 
   return (
-    <div className="space-y-6 animate-fade-in">
+    <div className="space-y-4 sm:space-y-6 animate-fade-in">
       {/* Welcome Message */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h2 className="text-2xl font-bold text-foreground">Olá, {user?.name?.split(' ')[0]}!</h2>
-          <p className="text-muted-foreground">Confira seu desempenho e vistorias pendentes</p>
+          <h2 className="text-xl sm:text-2xl font-bold text-foreground">Olá, {user?.name?.split(' ')[0]}!</h2>
+          <p className="text-sm text-muted-foreground">Confira seu desempenho e vistorias pendentes</p>
         </div>
-        <Button onClick={() => navigate('/new-inspection')} className="gap-2">
-          <ClipboardCheck className="h-4 w-4" />
+        <Button onClick={() => navigate('/new-inspection')} className="gap-2 w-full sm:w-auto">
+          <Plus className="h-4 w-4" />
           Nova Vistoria
         </Button>
       </div>
 
       {/* Stats Grid */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         <StatsCard
           title="Total de Vistorias"
           value={stats.total}
-          icon={<ClipboardCheck className="h-6 w-6" />}
+          icon={<ClipboardCheck className="h-5 w-5 sm:h-6 sm:w-6" />}
         />
         <StatsCard
           title="Aprovadas"
           value={stats.approved}
-          icon={<CheckCircle className="h-6 w-6" />}
+          icon={<CheckCircle className="h-5 w-5 sm:h-6 sm:w-6" />}
         />
         <StatsCard
           title="Pendentes"
           value={stats.pending}
-          icon={<Clock className="h-6 w-6" />}
+          icon={<Clock className="h-5 w-5 sm:h-6 sm:w-6" />}
         />
         <StatsCard
           title="Rejeitadas"
           value={stats.rejected}
-          icon={<XCircle className="h-6 w-6" />}
+          icon={<XCircle className="h-5 w-5 sm:h-6 sm:w-6" />}
         />
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-2">
+      <div className="grid gap-4 sm:gap-6 lg:grid-cols-2">
         {/* Performance Chart */}
         <Card>
-          <CardHeader>
-            <CardTitle className="text-lg font-semibold">Meu Desempenho</CardTitle>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base sm:text-lg font-semibold">Meu Desempenho</CardTitle>
           </CardHeader>
           <CardContent>
-            <ResponsiveContainer width="100%" height={280}>
-              <BarChart data={chartData} layout="vertical">
-                <CartesianGrid strokeDasharray="3 3" className="stroke-border" horizontal={true} vertical={false} />
-                <XAxis type="number" className="text-xs" tick={{ fill: 'hsl(var(--muted-foreground))' }} />
-                <YAxis dataKey="name" type="category" className="text-xs" tick={{ fill: 'hsl(var(--muted-foreground))' }} width={80} />
-                <Tooltip
-                  contentStyle={{
-                    backgroundColor: 'hsl(var(--card))',
-                    border: '1px solid hsl(var(--border))',
-                    borderRadius: '8px',
-                  }}
-                />
-                <Bar dataKey="value" radius={[0, 4, 4, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
+            <div className="h-[200px] sm:h-[280px]">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={chartData} layout="vertical">
+                  <CartesianGrid strokeDasharray="3 3" className="stroke-border" horizontal={true} vertical={false} />
+                  <XAxis 
+                    type="number" 
+                    className="text-xs" 
+                    tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 10 }}
+                  />
+                  <YAxis 
+                    dataKey="name" 
+                    type="category" 
+                    className="text-xs" 
+                    tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 10 }}
+                    width={70}
+                  />
+                  <Tooltip
+                    contentStyle={{
+                      backgroundColor: 'hsl(var(--card))',
+                      border: '1px solid hsl(var(--border))',
+                      borderRadius: '8px',
+                      fontSize: '12px',
+                    }}
+                  />
+                  <Bar dataKey="value" radius={[0, 4, 4, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
           </CardContent>
         </Card>
 
         {/* Quick Stats */}
         <Card>
-          <CardHeader>
-            <CardTitle className="text-lg font-semibold">Resumo do Mês</CardTitle>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base sm:text-lg font-semibold">Resumo do Mês</CardTitle>
           </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="flex items-center justify-between p-4 rounded-lg bg-success/10">
-              <div className="flex items-center gap-3">
-                <CheckCircle className="h-8 w-8 text-success" />
+          <CardContent className="space-y-3 sm:space-y-4">
+            <div className="flex items-center justify-between p-3 sm:p-4 rounded-lg bg-success/10">
+              <div className="flex items-center gap-2 sm:gap-3">
+                <CheckCircle className="h-6 w-6 sm:h-8 sm:w-8 text-success" />
                 <div>
-                  <p className="text-sm text-muted-foreground">Taxa de Aprovação</p>
-                  <p className="text-2xl font-bold text-foreground">
+                  <p className="text-xs sm:text-sm text-muted-foreground">Taxa de Aprovação</p>
+                  <p className="text-xl sm:text-2xl font-bold text-foreground">
                     {stats.total > 0 ? Math.round((stats.approved / stats.total) * 100) : 0}%
                   </p>
                 </div>
               </div>
             </div>
             
-            <div className="flex items-center justify-between p-4 rounded-lg bg-primary/10">
-              <div className="flex items-center gap-3">
-                <ClipboardCheck className="h-8 w-8 text-primary" />
+            <div className="flex items-center justify-between p-3 sm:p-4 rounded-lg bg-primary/10">
+              <div className="flex items-center gap-2 sm:gap-3">
+                <ClipboardCheck className="h-6 w-6 sm:h-8 sm:w-8 text-primary" />
                 <div>
-                  <p className="text-sm text-muted-foreground">Média Semanal</p>
-                  <p className="text-2xl font-bold text-foreground">
-                    {Math.round(stats.total / 4)} vistorias
+                  <p className="text-xs sm:text-sm text-muted-foreground">Média Semanal</p>
+                  <p className="text-xl sm:text-2xl font-bold text-foreground">
+                    {Math.round(stats.total / 4)} <span className="text-sm font-normal hidden sm:inline">vistorias</span>
                   </p>
                 </div>
               </div>
             </div>
 
-            <div className="flex items-center justify-between p-4 rounded-lg bg-warning/10">
-              <div className="flex items-center gap-3">
-                <Clock className="h-8 w-8 text-warning" />
+            <div className="flex items-center justify-between p-3 sm:p-4 rounded-lg bg-warning/10">
+              <div className="flex items-center gap-2 sm:gap-3">
+                <Clock className="h-6 w-6 sm:h-8 sm:w-8 text-warning" />
                 <div>
-                  <p className="text-sm text-muted-foreground">Aguardando Ação</p>
-                  <p className="text-2xl font-bold text-foreground">{stats.pending}</p>
+                  <p className="text-xs sm:text-sm text-muted-foreground">Aguardando Ação</p>
+                  <p className="text-xl sm:text-2xl font-bold text-foreground">{stats.pending}</p>
                 </div>
               </div>
             </div>
@@ -152,30 +165,37 @@ export function EmployeeDashboard() {
 
       {/* My Inspections Table */}
       <Card>
-        <CardHeader>
-          <CardTitle className="text-lg font-semibold">Minhas Vistorias</CardTitle>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-base sm:text-lg font-semibold">Minhas Vistorias</CardTitle>
         </CardHeader>
-        <CardContent>
+        <CardContent className="p-0 sm:p-6 sm:pt-0">
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead>
                 <tr className="border-b border-border">
-                  <th className="py-3 px-4 text-left text-sm font-medium text-muted-foreground">Veículo</th>
-                  <th className="py-3 px-4 text-left text-sm font-medium text-muted-foreground">Placa</th>
-                  <th className="py-3 px-4 text-left text-sm font-medium text-muted-foreground">Proprietário</th>
-                  <th className="py-3 px-4 text-left text-sm font-medium text-muted-foreground">Data</th>
-                  <th className="py-3 px-4 text-left text-sm font-medium text-muted-foreground">Status</th>
+                  <th className="py-3 px-4 text-left text-xs sm:text-sm font-medium text-muted-foreground">Veículo</th>
+                  <th className="py-3 px-4 text-left text-xs sm:text-sm font-medium text-muted-foreground hidden sm:table-cell">Placa</th>
+                  <th className="py-3 px-4 text-left text-xs sm:text-sm font-medium text-muted-foreground hidden md:table-cell">Proprietário</th>
+                  <th className="py-3 px-4 text-left text-xs sm:text-sm font-medium text-muted-foreground hidden lg:table-cell">Data</th>
+                  <th className="py-3 px-4 text-left text-xs sm:text-sm font-medium text-muted-foreground">Status</th>
                 </tr>
               </thead>
               <tbody>
                 {employeeInspections.map((inspection) => (
                   <tr key={inspection.id} className="border-b border-border/50 hover:bg-muted/50 transition-colors">
-                    <td className="py-3 px-4 text-sm font-medium text-foreground">
-                      {inspection.vehicle.brand} {inspection.vehicle.model}
+                    <td className="py-3 px-4">
+                      <div>
+                        <span className="text-xs sm:text-sm font-medium text-foreground">
+                          {inspection.vehicle.brand} {inspection.vehicle.model}
+                        </span>
+                        <span className="text-xs text-muted-foreground block sm:hidden">
+                          {inspection.vehicle.plate}
+                        </span>
+                      </div>
                     </td>
-                    <td className="py-3 px-4 text-sm text-muted-foreground">{inspection.vehicle.plate}</td>
-                    <td className="py-3 px-4 text-sm text-foreground">{inspection.vehicle.ownerName}</td>
-                    <td className="py-3 px-4 text-sm text-muted-foreground">
+                    <td className="py-3 px-4 text-xs sm:text-sm text-muted-foreground hidden sm:table-cell">{inspection.vehicle.plate}</td>
+                    <td className="py-3 px-4 text-xs sm:text-sm text-foreground hidden md:table-cell">{inspection.vehicle.ownerName}</td>
+                    <td className="py-3 px-4 text-xs sm:text-sm text-muted-foreground hidden lg:table-cell">
                       {new Date(inspection.date).toLocaleDateString('pt-BR')}
                     </td>
                     <td className="py-3 px-4">{getStatusBadge(inspection.status)}</td>
