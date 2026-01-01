@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Shield, Eye, EyeOff, User, Briefcase, Users } from 'lucide-react';
+import { Shield, Eye, EyeOff, Briefcase } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -11,7 +11,6 @@ import { cn } from '@/lib/utils';
 const roles: { value: UserRole; label: string; icon: React.ElementType; description: string }[] = [
   { value: 'admin', label: 'Administrador', icon: Shield, description: 'Acesso total ao sistema' },
   { value: 'employee', label: 'Funcionário', icon: Briefcase, description: 'Realizar vistorias' },
-  { value: 'client', label: 'Cliente', icon: User, description: 'Gerenciar veículos' },
 ];
 
 export default function Login() {
@@ -110,7 +109,7 @@ export default function Login() {
             {/* Role Selection */}
             <div className="mb-6">
               <Label className="text-sm font-medium text-foreground mb-3 block">Selecione seu perfil</Label>
-              <div className="grid grid-cols-3 gap-3">
+              <div className="grid grid-cols-2 gap-3">
                 {roles.map((role) => (
                   <button
                     key={role.value}

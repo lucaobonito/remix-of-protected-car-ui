@@ -7,21 +7,12 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Search, Car, Plus, Eye, Shield, AlertCircle, Clock } from 'lucide-react';
 import { mockVehicles } from '@/data/mockData';
-import { useAuth } from '@/contexts/AuthContext';
 
 export default function Vehicles() {
-  const { user } = useAuth();
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
 
-  const isAdmin = user?.role === 'admin';
-
-  // For clients, filter only their vehicles
-  const baseVehicles = isAdmin 
-    ? mockVehicles 
-    : mockVehicles.filter(v => v.ownerId === user?.id);
-
-  const filteredVehicles = baseVehicles.filter(vehicle => {
+  const filteredVehicles = mockVehicles.filter(vehicle => {
     const matchesSearch = 
       vehicle.plate.toLowerCase().includes(searchTerm.toLowerCase()) ||
       vehicle.brand.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -87,12 +78,10 @@ export default function Vehicles() {
             </Select>
           </div>
 
-          {isAdmin && (
-            <Button className="gap-2">
-              <Plus className="h-4 w-4" />
-              Adicionar Veículo
-            </Button>
-          )}
+          <Button className="gap-2">
+            <Plus className="h-4 w-4" />
+            Adicionar Veículo
+          </Button>
         </div>
 
         {/* Stats Summary */}
@@ -101,7 +90,7 @@ export default function Vehicles() {
             <div className="flex items-center gap-3">
               <Car className="h-8 w-8 text-primary" />
               <div>
-                <p className="text-2xl font-bold">{baseVehicles.length}</p>
+                <p className="text-2xl font-bold">{mockVehicles.length}</p>
                 <p className="text-sm text-muted-foreground">Total</p>
               </div>
             </div>
@@ -110,7 +99,7 @@ export default function Vehicles() {
             <div className="flex items-center gap-3">
               <Shield className="h-8 w-8 text-success" />
               <div>
-                <p className="text-2xl font-bold">{baseVehicles.filter(v => v.status === 'protected').length}</p>
+                <p className="text-2xl font-bold">{mockVehicles.filter(v => v.status === 'protected').length}</p>
                 <p className="text-sm text-muted-foreground">Protegidos</p>
               </div>
             </div>
@@ -119,7 +108,7 @@ export default function Vehicles() {
             <div className="flex items-center gap-3">
               <Clock className="h-8 w-8 text-warning" />
               <div>
-                <p className="text-2xl font-bold">{baseVehicles.filter(v => v.status === 'pending').length}</p>
+                <p className="text-2xl font-bold">{mockVehicles.filter(v => v.status === 'pending').length}</p>
                 <p className="text-sm text-muted-foreground">Pendentes</p>
               </div>
             </div>
@@ -128,7 +117,7 @@ export default function Vehicles() {
             <div className="flex items-center gap-3">
               <AlertCircle className="h-8 w-8 text-destructive" />
               <div>
-                <p className="text-2xl font-bold">{baseVehicles.filter(v => v.status === 'expired').length}</p>
+                <p className="text-2xl font-bold">{mockVehicles.filter(v => v.status === 'expired').length}</p>
                 <p className="text-sm text-muted-foreground">Expirados</p>
               </div>
             </div>
@@ -165,12 +154,10 @@ export default function Vehicles() {
                     <p className="text-sm text-muted-foreground">{vehicle.year} • {vehicle.color}</p>
                   </div>
 
-                  {isAdmin && (
-                    <div className="pt-2 border-t border-border">
-                      <p className="text-sm text-muted-foreground">Proprietário</p>
-                      <p className="font-medium text-foreground">{vehicle.ownerName}</p>
-                    </div>
-                  )}
+                  <div className="pt-2 border-t border-border">
+                    <p className="text-sm text-muted-foreground">Proprietário</p>
+                    <p className="font-medium text-foreground">{vehicle.ownerName}</p>
+                  </div>
 
                   <div className="flex gap-2 pt-2">
                     <Button variant="outline" size="sm" className="flex-1 gap-2">
