@@ -151,11 +151,3 @@ export const getEmployeeStats = (employeeId: string) => {
   };
 };
 
-export const getClientVehicles = (clientId: string) => {
-  return mockVehicles.filter(v => v.ownerId === clientId);
-};
-
-export const getClientInspections = (clientId: string) => {
-  const clientVehicleIds = mockVehicles.filter(v => v.ownerId === clientId).map(v => v.id);
-  return mockInspections.filter(i => clientVehicleIds.includes(i.vehicleId));
-};

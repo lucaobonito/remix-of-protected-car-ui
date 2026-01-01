@@ -21,13 +21,13 @@ interface NavItem {
 }
 
 const navItems: NavItem[] = [
-  { title: 'Dashboard', icon: LayoutDashboard, href: '/dashboard', roles: ['admin', 'employee', 'client'] },
-  { title: 'Veículos', icon: Car, href: '/vehicles', roles: ['admin', 'client'] },
+  { title: 'Dashboard', icon: LayoutDashboard, href: '/dashboard', roles: ['admin', 'employee'] },
+  { title: 'Veículos', icon: Car, href: '/vehicles', roles: ['admin'] },
   { title: 'Vistorias', icon: ClipboardCheck, href: '/inspections', roles: ['admin', 'employee'] },
-  { title: 'Realizar Vistoria', icon: FileSearch, href: '/new-inspection', roles: ['employee', 'client'] },
+  { title: 'Realizar Vistoria', icon: FileSearch, href: '/new-inspection', roles: ['employee'] },
   { title: 'Relatórios', icon: BarChart3, href: '/reports', roles: ['admin'] },
   { title: 'Usuários', icon: Users, href: '/users', roles: ['admin'] },
-  { title: 'Configurações', icon: Settings, href: '/settings', roles: ['admin', 'employee', 'client'] },
+  { title: 'Configurações', icon: Settings, href: '/settings', roles: ['admin', 'employee'] },
 ];
 
 export function AppSidebar() {
