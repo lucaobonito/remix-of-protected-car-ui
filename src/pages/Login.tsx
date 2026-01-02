@@ -16,7 +16,7 @@ const roles: { value: UserRole; label: string; icon: React.ElementType; descript
 export default function Login() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [selectedRole, setSelectedRole] = useState<UserRole>('admin');
+  const [selectedRole, setSelectedRole] = useState<UserRole | null>(null);
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
@@ -27,6 +27,12 @@ export default function Login() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+
+    if (!selectedRole) {
+      setError('Selecione um perfil para continuar.');
+      return;
+    }
+
     setIsLoading(true);
 
     try {
