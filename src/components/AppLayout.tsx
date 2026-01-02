@@ -5,7 +5,7 @@ import { AppSidebar } from './AppSidebar';
 import { ThemeToggle } from './ThemeToggle';
 import { Bell, Menu } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { useIsMobile } from '@/hooks/use-mobile';
+import { useIsBelowLg } from '@/hooks/use-mobile';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 
 // Duplicar SidebarContent para evitar import circular
@@ -130,7 +130,7 @@ interface AppLayoutProps {
 
 export function AppLayout({ children, title }: AppLayoutProps) {
   const { isAuthenticated, user } = useAuth();
-  const isMobile = useIsMobile();
+  const isBelowLg = useIsBelowLg();
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   if (!isAuthenticated) {
@@ -139,19 +139,16 @@ export function AppLayout({ children, title }: AppLayoutProps) {
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Desktop Sidebar */}
-      {!isMobile && <AppSidebar />}
+      {/* Desktop Sidebar - only on lg+ */}
+      {!isBelowLg && <AppSidebar />}
       
       {/* Main Content */}
-      <div className={cn(
-        "transition-all duration-200",
-        isMobile ? "pl-0" : "lg:pl-64"
-      )}>
+      <div className="transition-all duration-200 lg:pl-64">
         {/* Header */}
         <header className="sticky top-0 z-30 flex h-14 sm:h-16 items-center justify-between border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 px-4 sm:px-6">
           <div className="flex items-center gap-3">
-            {/* Mobile Menu Button */}
-            {isMobile && (
+            {/* Mobile/Tablet Menu Button */}
+            {isBelowLg && (
               <Sheet open={sidebarOpen} onOpenChange={setSidebarOpen}>
                 <SheetTrigger asChild>
                   <Button variant="ghost" size="icon" className="-ml-2">
