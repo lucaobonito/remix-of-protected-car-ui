@@ -3,7 +3,8 @@ import { Navigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { AppSidebar } from './AppSidebar';
 import { ThemeToggle } from './ThemeToggle';
-import { Bell, Menu } from 'lucide-react';
+import { NotificationsDropdown } from './NotificationsDropdown';
+import { Menu } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useIsBelowLg } from '@/hooks/use-mobile';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
@@ -167,12 +168,7 @@ export function AppLayout({ children, title }: AppLayoutProps) {
             )}
           </div>
           <div className="flex items-center gap-1 sm:gap-2">
-            <Button variant="ghost" size="icon" className="relative h-9 w-9 sm:h-10 sm:w-10">
-              <Bell className="h-4 w-4 sm:h-5 sm:w-5" />
-              <span className="absolute -right-0.5 -top-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-destructive text-[10px] font-medium text-destructive-foreground">
-                3
-              </span>
-            </Button>
+            <NotificationsDropdown />
             <ThemeToggle />
           </div>
         </header>
