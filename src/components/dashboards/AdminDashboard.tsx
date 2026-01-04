@@ -15,9 +15,11 @@ import {
   LineChart,
   Line,
 } from 'recharts';
-import { mockMonthlyStats, mockInspections } from '@/data/mockData';
+import { mockMonthlyStats } from '@/data/mockData';
+import { useVehicles } from '@/contexts/VehiclesContext';
 
 export function AdminDashboard() {
+  const { inspections } = useVehicles();
   const totalVehicles = mockMonthlyStats.reduce((acc, m) => acc + m.vehicles, 0);
   const totalInspections = mockMonthlyStats.reduce((acc, m) => acc + m.inspections, 0);
   const totalRevenue = mockMonthlyStats.reduce((acc, m) => acc + m.revenue, 0);
@@ -230,7 +232,7 @@ export function AdminDashboard() {
                 </tr>
               </thead>
               <tbody>
-                {mockInspections.slice(0, 5).map((inspection) => (
+                {inspections.slice(0, 5).map((inspection) => (
                   <tr key={inspection.id} className="border-b border-border/50 hover:bg-muted/50 transition-colors">
                     <td className="py-3 px-4">
                       <div>

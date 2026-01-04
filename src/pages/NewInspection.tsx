@@ -10,6 +10,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
+import { useVehicles } from '@/contexts/VehiclesContext';
 import { cn } from '@/lib/utils';
 
 interface ChecklistItem {
@@ -22,6 +23,7 @@ export default function NewInspection() {
   const navigate = useNavigate();
   const { toast } = useToast();
   const { user } = useAuth();
+  const { addVehicle, addInspection } = useVehicles();
   const isEmployee = user?.role === 'employee';
 
   const [formData, setFormData] = useState({
@@ -73,6 +75,38 @@ export default function NewInspection() {
 
     // Simulate API call
     await new Promise(resolve => setTimeout(resolve, 1500));
+
+    // Create new vehicle
+    const newVehicle = addVehicle({
+      plate: formData.plate.toUpperCase(),
+      brand: formData.brand,
+      model: formData.model,
+      year: parseInt(formData.year),
+      color: formData.color,
+      ownerId: user?.id || 'unknown',
+      ownerName: formData.ownerName || user?.name || 'Proprietário',
+      status: 'pending',
+    });
+
+    // Create inspection linked to vehicle
+    addInspection({
+      vehicleId: newVehicle.id,
+      vehicle: newVehicle,
+      employeeId: user?.id || '2',
+      employeeName: user?.name || 'Funcionário',
+      status: isEmployee ? 'pending' : 'pending',
+      date: new Date().toISOString().split('T')[0],
+      photos: photos,
+      checklist: {
+        exterior: checklist.find(c => c.id === 'exterior')?.checked || false,
+        interior: checklist.find(c => c.id === 'interior')?.checked || false,
+        engine: checklist.find(c => c.id === 'engine')?.checked || false,
+        tires: checklist.find(c => c.id === 'tires')?.checked || false,
+        documents: checklist.find(c => c.id === 'documents')?.checked || false,
+        lights: checklist.find(c => c.id === 'lights')?.checked || false,
+      },
+      notes: formData.notes || undefined,
+    });
 
     toast({
       title: 'Vistoria enviada!',

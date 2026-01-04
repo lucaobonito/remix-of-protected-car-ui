@@ -6,13 +6,14 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Search, Car, Plus, Eye, Shield, AlertCircle, Clock } from 'lucide-react';
-import { mockVehicles } from '@/data/mockData';
+import { useVehicles } from '@/contexts/VehiclesContext';
 
 export default function Vehicles() {
+  const { vehicles } = useVehicles();
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
 
-  const filteredVehicles = mockVehicles.filter(vehicle => {
+  const filteredVehicles = vehicles.filter(vehicle => {
     const matchesSearch = 
       vehicle.plate.toLowerCase().includes(searchTerm.toLowerCase()) ||
       vehicle.brand.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -90,7 +91,7 @@ export default function Vehicles() {
             <div className="flex items-center gap-3">
               <Car className="h-8 w-8 text-primary" />
               <div>
-                <p className="text-2xl font-bold">{mockVehicles.length}</p>
+                <p className="text-2xl font-bold">{vehicles.length}</p>
                 <p className="text-sm text-muted-foreground">Total</p>
               </div>
             </div>
@@ -99,7 +100,7 @@ export default function Vehicles() {
             <div className="flex items-center gap-3">
               <Shield className="h-8 w-8 text-success" />
               <div>
-                <p className="text-2xl font-bold">{mockVehicles.filter(v => v.status === 'protected').length}</p>
+                <p className="text-2xl font-bold">{vehicles.filter(v => v.status === 'protected').length}</p>
                 <p className="text-sm text-muted-foreground">Protegidos</p>
               </div>
             </div>
@@ -108,7 +109,7 @@ export default function Vehicles() {
             <div className="flex items-center gap-3">
               <Clock className="h-8 w-8 text-warning" />
               <div>
-                <p className="text-2xl font-bold">{mockVehicles.filter(v => v.status === 'pending').length}</p>
+                <p className="text-2xl font-bold">{vehicles.filter(v => v.status === 'pending').length}</p>
                 <p className="text-sm text-muted-foreground">Pendentes</p>
               </div>
             </div>
@@ -117,7 +118,7 @@ export default function Vehicles() {
             <div className="flex items-center gap-3">
               <AlertCircle className="h-8 w-8 text-destructive" />
               <div>
-                <p className="text-2xl font-bold">{mockVehicles.filter(v => v.status === 'expired').length}</p>
+                <p className="text-2xl font-bold">{vehicles.filter(v => v.status === 'expired').length}</p>
                 <p className="text-sm text-muted-foreground">Expirados</p>
               </div>
             </div>
