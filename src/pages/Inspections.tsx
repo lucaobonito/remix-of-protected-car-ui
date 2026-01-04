@@ -6,16 +6,17 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Search, Filter, Eye, Calendar, User } from 'lucide-react';
-import { mockInspections } from '@/data/mockData';
+import { useVehicles } from '@/contexts/VehiclesContext';
 
 export default function Inspections() {
+  const { inspections } = useVehicles();
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [employeeFilter, setEmployeeFilter] = useState('all');
 
-  const employees = [...new Set(mockInspections.map(i => i.employeeName))];
+  const employees = [...new Set(inspections.map(i => i.employeeName))];
 
-  const filteredInspections = mockInspections.filter(inspection => {
+  const filteredInspections = inspections.filter(inspection => {
     const matchesSearch = 
       inspection.vehicle.plate.toLowerCase().includes(searchTerm.toLowerCase()) ||
       inspection.vehicle.brand.toLowerCase().includes(searchTerm.toLowerCase()) ||

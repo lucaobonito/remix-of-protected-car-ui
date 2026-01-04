@@ -13,15 +13,16 @@ import {
   Tooltip,
   ResponsiveContainer,
 } from 'recharts';
-import { mockInspections, getEmployeeStats } from '@/data/mockData';
 import { useAuth } from '@/contexts/AuthContext';
+import { useVehicles } from '@/contexts/VehiclesContext';
 
 export function EmployeeDashboard() {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const { inspections, getEmployeeStats } = useVehicles();
   const stats = getEmployeeStats(user?.id || '2');
   
-  const employeeInspections = mockInspections.filter(i => i.employeeId === (user?.id || '2'));
+  const employeeInspections = inspections.filter(i => i.employeeId === (user?.id || '2'));
 
   const chartData = [
     { name: 'Aprovadas', value: stats.approved, fill: 'hsl(var(--success))' },
