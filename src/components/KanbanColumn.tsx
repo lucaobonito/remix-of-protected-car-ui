@@ -1,4 +1,4 @@
-import { ReactNode } from 'react';
+import { ReactNode, useState, DragEvent } from 'react';
 import { cn } from '@/lib/utils';
 import { ScrollArea } from '@/components/ui/scroll-area';
 
@@ -6,12 +6,42 @@ interface KanbanColumnProps {
   title: string;
   count: number;
   colorClass: string;
+  status: string;
+  onDrop: (inspectionId: string, newStatus: string) => void;
   children: ReactNode;
 }
 
-export function KanbanColumn({ title, count, colorClass, children }: KanbanColumnProps) {
+export function KanbanColumn({ title, count, colorClass, status, onDrop, children }: KanbanColumnProps) {
+  const [isDragOver, setIsDragOver] = useState(false);
+
+  const handleDragOver = (e: DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    setIsDragOver(true);
+  };
+
+  const handleDragLeave = () => {
+    setIsDragOver(false);
+  };
+
+  const handleDrop = (e: DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    setIsDragOver(false);
+    const inspectionId = e.dataTransfer.getData('inspectionId');
+    if (inspectionId) {
+      onDrop(inspectionId, status);
+    }
+  };
+
   return (
-    <div className="flex flex-col bg-muted/30 rounded-lg min-w-[280px] w-full max-w-[350px]">
+    <div 
+      className={cn(
+        "flex flex-col bg-muted/30 rounded-lg min-w-[280px] w-full max-w-[350px] transition-all duration-200",
+        isDragOver && "ring-2 ring-primary ring-offset-2 ring-offset-background"
+      )}
+      onDragOver={handleDragOver}
+      onDragLeave={handleDragLeave}
+      onDrop={handleDrop}
+    >
       {/* Column Header */}
       <div className={cn(
         "flex items-center justify-between px-4 py-3 rounded-t-lg",

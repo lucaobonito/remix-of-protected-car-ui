@@ -6,6 +6,7 @@ import { KanbanCard } from '@/components/KanbanCard';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useVehicles } from '@/contexts/VehiclesContext';
+import { useToast } from '@/hooks/use-toast';
 import { Inspection } from '@/data/mockData';
 
 const statusColumns = [
@@ -15,8 +16,16 @@ const statusColumns = [
   { key: 'rejected', title: 'Rejeitadas', colorClass: 'bg-red-500 text-red-950' },
 ] as const;
 
+const statusLabels: Record<string, string> = {
+  pending: 'Pendentes',
+  in_progress: 'Em Andamento',
+  approved: 'Aprovadas',
+  rejected: 'Rejeitadas',
+};
+
 export default function Kanban() {
-  const { inspections } = useVehicles();
+  const { inspections, updateInspectionStatus } = useVehicles();
+  const { toast } = useToast();
   const [searchTerm, setSearchTerm] = useState('');
   const [employeeFilter, setEmployeeFilter] = useState('all');
 
@@ -57,6 +66,18 @@ export default function Kanban() {
 
     return groups;
   }, [filteredInspections]);
+
+  const handleDrop = (inspectionId: string, newStatus: string) => {
+    const inspection = inspections.find(i => i.id === inspectionId);
+    if (!inspection || inspection.status === newStatus) return;
+
+    updateInspectionStatus(inspectionId, newStatus as Inspection['status']);
+    
+    toast({
+      title: "Vistoria movida",
+      description: `Vistoria movida para ${statusLabels[newStatus]}`,
+    });
+  };
 
   const handleViewDetails = (inspection: Inspection) => {
     console.log('View details:', inspection);
@@ -101,6 +122,8 @@ export default function Kanban() {
               title={column.title}
               count={groupedInspections[column.key].length}
               colorClass={column.colorClass}
+              status={column.key}
+              onDrop={handleDrop}
             >
               {groupedInspections[column.key].length === 0 ? (
                 <p className="text-center text-sm text-muted-foreground py-8">
