@@ -12,6 +12,7 @@ import Dashboard from "./pages/Dashboard";
 import Vehicles from "./pages/Vehicles";
 import Inspections from "./pages/Inspections";
 import NewInspection from "./pages/NewInspection";
+import Kanban from "./pages/Kanban";
 import Reports from "./pages/Reports";
 import Users from "./pages/Users";
 import Settings from "./pages/Settings";
@@ -36,6 +37,7 @@ const App = () => (
                   <Route path="/vehicles" element={<Vehicles />} />
                   <Route path="/inspections" element={<Inspections />} />
                   <Route path="/new-inspection" element={<NewInspection />} />
+                  <Route path="/kanban" element={<Kanban />} />
                   <Route path="/reports" element={<Reports />} />
                   <Route path="/users" element={<Users />} />
                   <Route path="/settings" element={<Settings />} />
