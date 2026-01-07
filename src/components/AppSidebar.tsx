@@ -12,6 +12,7 @@ import {
   BarChart3,
   Menu,
   X,
+  Columns3,
 } from 'lucide-react';
 import { useAuth, UserRole } from '@/contexts/AuthContext';
 import { cn } from '@/lib/utils';
@@ -30,6 +31,7 @@ const navItems: NavItem[] = [
   { title: 'Dashboard', icon: LayoutDashboard, href: '/dashboard', roles: ['admin', 'employee'] },
   { title: 'Veículos', icon: Car, href: '/vehicles', roles: ['admin'] },
   { title: 'Vistorias', icon: ClipboardCheck, href: '/inspections', roles: ['admin', 'employee'] },
+  { title: 'Kanban', icon: Columns3, href: '/kanban', roles: ['admin', 'employee'] },
   { title: 'Realizar Vistoria', icon: FileSearch, href: '/new-inspection', roles: ['employee'] },
   { title: 'Relatórios', icon: BarChart3, href: '/reports', roles: ['admin'] },
   { title: 'Usuários', icon: Users, href: '/users', roles: ['admin'] },
