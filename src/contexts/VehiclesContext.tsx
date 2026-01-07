@@ -6,6 +6,7 @@ interface VehiclesContextType {
   inspections: Inspection[];
   addVehicle: (vehicle: Omit<Vehicle, 'id' | 'createdAt'>) => Vehicle;
   addInspection: (inspection: Omit<Inspection, 'id'>) => Inspection;
+  updateInspectionStatus: (inspectionId: string, newStatus: Inspection['status']) => void;
   getEmployeeStats: (employeeId: string) => {
     total: number;
     approved: number;
@@ -39,6 +40,16 @@ export function VehiclesProvider({ children }: { children: ReactNode }) {
     return newInspection;
   };
 
+  const updateInspectionStatus = (inspectionId: string, newStatus: Inspection['status']) => {
+    setInspections(prev => 
+      prev.map(inspection => 
+        inspection.id === inspectionId 
+          ? { ...inspection, status: newStatus }
+          : inspection
+      )
+    );
+  };
+
   const getEmployeeStats = (employeeId: string) => {
     const employeeInspections = inspections.filter(i => i.employeeId === employeeId);
     return {
@@ -50,7 +61,7 @@ export function VehiclesProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <VehiclesContext.Provider value={{ vehicles, inspections, addVehicle, addInspection, getEmployeeStats }}>
+    <VehiclesContext.Provider value={{ vehicles, inspections, addVehicle, addInspection, updateInspectionStatus, getEmployeeStats }}>
       {children}
     </VehiclesContext.Provider>
   );
