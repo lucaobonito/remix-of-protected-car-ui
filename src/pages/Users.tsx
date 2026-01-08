@@ -4,6 +4,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Search, Plus, MoreVertical, Shield, Briefcase, User, Mail, Phone } from 'lucide-react';
@@ -13,33 +14,48 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { useToast } from '@/hooks/use-toast';
 
 interface UserData {
   id: string;
   name: string;
   email: string;
   phone: string;
-  role: 'admin' | 'employee' | 'client';
+  role: 'admin' | 'employee';
   status: 'active' | 'inactive';
   avatar: string;
   createdAt: string;
 }
 
-const mockUsers: UserData[] = [
+const initialUsers: UserData[] = [
   { id: '1', name: 'Carlos Silva', email: 'carlos@protectedcar.com', phone: '(11) 99999-0001', role: 'admin', status: 'active', avatar: 'CS', createdAt: '2023-06-15' },
   { id: '2', name: 'Ana Santos', email: 'ana@protectedcar.com', phone: '(11) 99999-0002', role: 'employee', status: 'active', avatar: 'AS', createdAt: '2023-08-20' },
-  { id: '3', name: 'João Oliveira', email: 'joao@email.com', phone: '(11) 99999-0003', role: 'client', status: 'active', avatar: 'JO', createdAt: '2024-01-10' },
-  { id: '4', name: 'Maria Costa', email: 'maria@email.com', phone: '(11) 99999-0004', role: 'client', status: 'active', avatar: 'MC', createdAt: '2024-02-15' },
-  { id: '5', name: 'Lucas Pereira', email: 'lucas@protectedcar.com', phone: '(11) 99999-0005', role: 'employee', status: 'active', avatar: 'LP', createdAt: '2023-11-01' },
-  { id: '6', name: 'Pedro Lima', email: 'pedro@email.com', phone: '(11) 99999-0006', role: 'client', status: 'inactive', avatar: 'PL', createdAt: '2024-03-05' },
+  { id: '3', name: 'Lucas Pereira', email: 'lucas@protectedcar.com', phone: '(11) 99999-0005', role: 'employee', status: 'active', avatar: 'LP', createdAt: '2023-11-01' },
 ];
 
 export default function Users() {
+  const { toast } = useToast();
+  const [users, setUsers] = useState<UserData[]>(initialUsers);
   const [searchTerm, setSearchTerm] = useState('');
   const [roleFilter, setRoleFilter] = useState('all');
   const [statusFilter, setStatusFilter] = useState('all');
+  const [isNewUserOpen, setIsNewUserOpen] = useState(false);
+  const [newUser, setNewUser] = useState({
+    name: '',
+    email: '',
+    phone: '',
+    role: 'employee' as 'admin' | 'employee'
+  });
 
-  const filteredUsers = mockUsers.filter(user => {
+  const filteredUsers = users.filter(user => {
     const matchesSearch = 
       user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       user.email.toLowerCase().includes(searchTerm.toLowerCase());
@@ -56,10 +72,8 @@ export default function Users() {
         return <Badge variant="default" className="gap-1"><Shield className="h-3 w-3" /> Admin</Badge>;
       case 'employee':
         return <Badge variant="secondary" className="gap-1"><Briefcase className="h-3 w-3" /> Funcionário</Badge>;
-      case 'client':
-        return <Badge variant="outline" className="gap-1"><User className="h-3 w-3" /> Cliente</Badge>;
       default:
-        return <Badge variant="muted">{role}</Badge>;
+        return <Badge variant="outline">{role}</Badge>;
     }
   };
 
@@ -67,6 +81,44 @@ export default function Users() {
     return status === 'active' 
       ? <Badge variant="success">Ativo</Badge>
       : <Badge variant="muted">Inativo</Badge>;
+  };
+
+  const handleAddUser = () => {
+    if (!newUser.name.trim() || !newUser.email.trim()) {
+      toast({
+        title: "Erro",
+        description: "Nome e e-mail são obrigatórios.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    const avatar = newUser.name
+      .split(' ')
+      .map(n => n[0])
+      .join('')
+      .toUpperCase()
+      .slice(0, 2);
+
+    const user: UserData = {
+      id: String(Date.now()),
+      name: newUser.name,
+      email: newUser.email,
+      phone: newUser.phone,
+      role: newUser.role,
+      status: 'active',
+      avatar,
+      createdAt: new Date().toISOString().split('T')[0]
+    };
+
+    setUsers(prev => [...prev, user]);
+    setIsNewUserOpen(false);
+    setNewUser({ name: '', email: '', phone: '', role: 'employee' });
+    
+    toast({
+      title: "Usuário criado",
+      description: `${user.name} foi adicionado com sucesso.`
+    });
   };
 
   return (
@@ -92,7 +144,6 @@ export default function Users() {
                 <SelectItem value="all">Todos os perfis</SelectItem>
                 <SelectItem value="admin">Administradores</SelectItem>
                 <SelectItem value="employee">Funcionários</SelectItem>
-                <SelectItem value="client">Clientes</SelectItem>
               </SelectContent>
             </Select>
             <Select value={statusFilter} onValueChange={setStatusFilter}>
@@ -107,36 +158,30 @@ export default function Users() {
             </Select>
           </div>
 
-          <Button className="gap-2">
+          <Button className="gap-2" onClick={() => setIsNewUserOpen(true)}>
             <Plus className="h-4 w-4" />
             Novo Usuário
           </Button>
         </div>
 
         {/* Stats */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div className="grid grid-cols-3 gap-4">
           <Card className="p-4">
             <div className="text-center">
-              <p className="text-2xl font-bold text-foreground">{mockUsers.length}</p>
+              <p className="text-2xl font-bold text-foreground">{users.length}</p>
               <p className="text-sm text-muted-foreground">Total</p>
             </div>
           </Card>
           <Card className="p-4">
             <div className="text-center">
-              <p className="text-2xl font-bold text-foreground">{mockUsers.filter(u => u.role === 'admin').length}</p>
+              <p className="text-2xl font-bold text-foreground">{users.filter(u => u.role === 'admin').length}</p>
               <p className="text-sm text-muted-foreground">Admins</p>
             </div>
           </Card>
           <Card className="p-4">
             <div className="text-center">
-              <p className="text-2xl font-bold text-foreground">{mockUsers.filter(u => u.role === 'employee').length}</p>
+              <p className="text-2xl font-bold text-foreground">{users.filter(u => u.role === 'employee').length}</p>
               <p className="text-sm text-muted-foreground">Funcionários</p>
-            </div>
-          </Card>
-          <Card className="p-4">
-            <div className="text-center">
-              <p className="text-2xl font-bold text-foreground">{mockUsers.filter(u => u.role === 'client').length}</p>
-              <p className="text-sm text-muted-foreground">Clientes</p>
             </div>
           </Card>
         </div>
@@ -207,6 +252,71 @@ export default function Users() {
           )}
         </div>
       </div>
+
+      {/* New User Dialog */}
+      <Dialog open={isNewUserOpen} onOpenChange={setIsNewUserOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Novo Usuário</DialogTitle>
+            <DialogDescription>
+              Adicione um novo membro à equipe.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="name">Nome *</Label>
+              <Input
+                id="name"
+                placeholder="Nome completo"
+                value={newUser.name}
+                onChange={(e) => setNewUser(prev => ({ ...prev, name: e.target.value }))}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="email">E-mail *</Label>
+              <Input
+                id="email"
+                type="email"
+                placeholder="email@empresa.com"
+                value={newUser.email}
+                onChange={(e) => setNewUser(prev => ({ ...prev, email: e.target.value }))}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="phone">Telefone</Label>
+              <Input
+                id="phone"
+                placeholder="(11) 99999-0000"
+                value={newUser.phone}
+                onChange={(e) => setNewUser(prev => ({ ...prev, phone: e.target.value }))}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="role">Perfil *</Label>
+              <Select 
+                value={newUser.role} 
+                onValueChange={(value: 'admin' | 'employee') => setNewUser(prev => ({ ...prev, role: value }))}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione o perfil" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="employee">Funcionário</SelectItem>
+                  <SelectItem value="admin">Administrador</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsNewUserOpen(false)}>
+              Cancelar
+            </Button>
+            <Button onClick={handleAddUser}>
+              Salvar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </AppLayout>
   );
 }
