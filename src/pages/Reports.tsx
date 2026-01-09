@@ -3,7 +3,8 @@ import { AppLayout } from '@/components/AppLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Download, TrendingUp, TrendingDown, DollarSign, Car, ClipboardCheck, Users, Loader2 } from 'lucide-react';
+import { Download, TrendingUp, TrendingDown, DollarSign, Car, ClipboardCheck, Users, Loader2, FileSpreadsheet } from 'lucide-react';
+import * as XLSX from 'xlsx';
 import {
   AreaChart,
   Area,
@@ -28,6 +29,7 @@ export default function Reports() {
   const { toast } = useToast();
   const reportRef = useRef<HTMLDivElement>(null);
   const [isExporting, setIsExporting] = useState(false);
+  const [isExportingExcel, setIsExportingExcel] = useState(false);
 
   const pieData = [
     { name: 'Aprovadas', value: mockInspections.filter(i => i.status === 'approved').length, color: 'hsl(var(--success))' },
@@ -99,6 +101,65 @@ export default function Reports() {
     }
   };
 
+  const handleExportExcel = () => {
+    setIsExportingExcel(true);
+    
+    try {
+      const wb = XLSX.utils.book_new();
+      
+      // Aba 1: Resumo KPIs
+      const kpiData = [
+        ['Indicador', 'Valor'],
+        ['Receita Total', `R$ ${(totalRevenue / 1000).toFixed(0)}k`],
+        ['Lucro Líquido', `R$ ${(totalProfit / 1000).toFixed(0)}k`],
+        ['Margem de Lucro', `${profitMargin}%`],
+        ['Veículos Ativos', mockVehicles.filter(v => v.status === 'protected').length],
+        ['Taxa de Aprovação', `${Math.round((mockInspections.filter(i => i.status === 'approved').length / mockInspections.length) * 100)}%`],
+      ];
+      const wsKPI = XLSX.utils.aoa_to_sheet(kpiData);
+      XLSX.utils.book_append_sheet(wb, wsKPI, 'Resumo');
+      
+      // Aba 2: Estatísticas Mensais
+      const monthlyData = [
+        ['Mês', 'Veículos', 'Vistorias', 'Receita', 'Lucro'],
+        ...mockMonthlyStats.map(m => [m.month, m.vehicles, m.inspections, m.revenue, m.profit])
+      ];
+      const wsMonthly = XLSX.utils.aoa_to_sheet(monthlyData);
+      XLSX.utils.book_append_sheet(wb, wsMonthly, 'Mensal');
+      
+      // Aba 3: Status das Vistorias
+      const inspectionData = [
+        ['Status', 'Quantidade'],
+        ...pieData.map(p => [p.name, p.value])
+      ];
+      const wsInspections = XLSX.utils.aoa_to_sheet(inspectionData);
+      XLSX.utils.book_append_sheet(wb, wsInspections, 'Vistorias');
+      
+      // Aba 4: Status dos Veículos
+      const vehicleData = [
+        ['Status', 'Quantidade'],
+        ...vehicleStatusData.map(v => [v.name, v.value])
+      ];
+      const wsVehicles = XLSX.utils.aoa_to_sheet(vehicleData);
+      XLSX.utils.book_append_sheet(wb, wsVehicles, 'Veículos');
+      
+      XLSX.writeFile(wb, `relatorio-${new Date().toISOString().split('T')[0]}.xlsx`);
+      
+      toast({
+        title: "Excel exportado",
+        description: "O relatório foi baixado com sucesso."
+      });
+    } catch (error) {
+      toast({
+        title: "Erro ao exportar",
+        description: "Não foi possível gerar o Excel.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsExportingExcel(false);
+    }
+  };
+
   return (
     <AppLayout title="Relatórios">
       <div className="space-y-6 animate-fade-in">
@@ -123,26 +184,46 @@ export default function Reports() {
                 <SelectItem value="q1">1º Trimestre</SelectItem>
                 <SelectItem value="q2">2º Trimestre</SelectItem>
               </SelectContent>
-            </Select>
+          </Select>
           </div>
-          <Button 
-            variant="outline" 
-            className="gap-2"
-            onClick={handleExportPDF}
-            disabled={isExporting}
-          >
-            {isExporting ? (
-              <>
-                <Loader2 className="h-4 w-4 animate-spin" />
-                Gerando PDF...
-              </>
-            ) : (
-              <>
-                <Download className="h-4 w-4" />
-                Exportar PDF
-              </>
-            )}
-          </Button>
+          <div className="flex gap-2">
+            <Button 
+              variant="outline" 
+              className="gap-2"
+              onClick={handleExportExcel}
+              disabled={isExportingExcel}
+            >
+              {isExportingExcel ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Gerando...
+                </>
+              ) : (
+                <>
+                  <FileSpreadsheet className="h-4 w-4" />
+                  Exportar Excel
+                </>
+              )}
+            </Button>
+            <Button 
+              variant="outline" 
+              className="gap-2"
+              onClick={handleExportPDF}
+              disabled={isExporting}
+            >
+              {isExporting ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Gerando PDF...
+                </>
+              ) : (
+                <>
+                  <Download className="h-4 w-4" />
+                  Exportar PDF
+                </>
+              )}
+            </Button>
+          </div>
         </div>
 
         <div ref={reportRef} className="space-y-6">
