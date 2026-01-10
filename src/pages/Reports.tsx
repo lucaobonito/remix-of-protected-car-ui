@@ -101,53 +101,182 @@ export default function Reports() {
     }
   };
 
+  // Funções auxiliares para formatação
+  const formatCurrency = (value: number) => 
+    new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
+
+  const formatDate = (dateStr: string) => 
+    new Date(dateStr).toLocaleDateString('pt-BR');
+
+  const translateStatus = (status: string) => {
+    const map: Record<string, string> = {
+      'approved': 'Aprovada',
+      'pending': 'Pendente',
+      'in_progress': 'Em Andamento',
+      'rejected': 'Rejeitada'
+    };
+    return map[status] || status;
+  };
+
+  const translateVehicleStatus = (status: string) => {
+    const map: Record<string, string> = {
+      'protected': 'Protegido',
+      'pending': 'Pendente',
+      'expired': 'Expirado'
+    };
+    return map[status] || status;
+  };
+
+  const translateChecklistItem = (item: string) => {
+    const map: Record<string, string> = {
+      'exterior': 'Exterior',
+      'interior': 'Interior',
+      'engine': 'Motor',
+      'tires': 'Pneus',
+      'documents': 'Documentos',
+      'lights': 'Iluminação'
+    };
+    return map[item] || item;
+  };
+
   const handleExportExcel = () => {
     setIsExportingExcel(true);
     
     try {
       const wb = XLSX.utils.book_new();
-      
-      // Aba 1: Resumo KPIs
-      const kpiData = [
-        ['Indicador', 'Valor'],
-        ['Receita Total', `R$ ${(totalRevenue / 1000).toFixed(0)}k`],
-        ['Lucro Líquido', `R$ ${(totalProfit / 1000).toFixed(0)}k`],
-        ['Margem de Lucro', `${profitMargin}%`],
-        ['Veículos Ativos', mockVehicles.filter(v => v.status === 'protected').length],
-        ['Taxa de Aprovação', `${Math.round((mockInspections.filter(i => i.status === 'approved').length / mockInspections.length) * 100)}%`],
+      const dataAtual = new Date().toLocaleDateString('pt-BR');
+      const taxaAprovacao = Math.round((mockInspections.filter(i => i.status === 'approved').length / mockInspections.length) * 100);
+
+      // Função auxiliar para criar planilha com largura de colunas
+      const createSheet = (data: (string | number | undefined)[][], colWidths: number[]) => {
+        const ws = XLSX.utils.aoa_to_sheet(data);
+        ws['!cols'] = colWidths.map(w => ({ wch: w }));
+        return ws;
+      };
+
+      // ===== ABA 1: RESUMO EXECUTIVO =====
+      const resumoData: (string | number | undefined)[][] = [
+        ['RELATÓRIO GERENCIAL - PROTECTED CAR'],
+        ['Gerado em: ' + dataAtual],
+        [],
+        ['INDICADORES PRINCIPAIS', '', ''],
+        ['Indicador', 'Valor', 'Observação'],
+        ['Receita Total', formatCurrency(totalRevenue), '+15.3% vs período anterior'],
+        ['Lucro Líquido', formatCurrency(totalProfit), '+12.1% vs período anterior'],
+        ['Margem de Lucro', profitMargin + '%', 'Meta: 30%'],
+        [],
+        ['FROTA', '', ''],
+        ['Total de Veículos', mockVehicles.length, ''],
+        ['Veículos Protegidos', mockVehicles.filter(v => v.status === 'protected').length, 'Status ativo'],
+        ['Veículos Pendentes', mockVehicles.filter(v => v.status === 'pending').length, 'Aguardando vistoria'],
+        ['Veículos Expirados', mockVehicles.filter(v => v.status === 'expired').length, 'Requer renovação'],
+        [],
+        ['VISTORIAS', '', ''],
+        ['Total de Vistorias', mockInspections.length, ''],
+        ['Aprovadas', mockInspections.filter(i => i.status === 'approved').length, ''],
+        ['Pendentes', mockInspections.filter(i => i.status === 'pending' || i.status === 'in_progress').length, ''],
+        ['Rejeitadas', mockInspections.filter(i => i.status === 'rejected').length, ''],
+        ['Taxa de Aprovação', taxaAprovacao + '%', ''],
       ];
-      const wsKPI = XLSX.utils.aoa_to_sheet(kpiData);
-      XLSX.utils.book_append_sheet(wb, wsKPI, 'Resumo');
-      
-      // Aba 2: Estatísticas Mensais
-      const monthlyData = [
-        ['Mês', 'Veículos', 'Vistorias', 'Receita', 'Lucro'],
-        ...mockMonthlyStats.map(m => [m.month, m.vehicles, m.inspections, m.revenue, m.profit])
+
+      // ===== ABA 2: ESTATÍSTICAS MENSAIS =====
+      const mensalData: (string | number | undefined)[][] = [
+        ['ESTATÍSTICAS MENSAIS - ' + new Date().getFullYear()],
+        [],
+        ['Mês', 'Veículos', 'Var %', 'Vistorias', 'Var %', 'Receita (R$)', 'Lucro (R$)', 'Margem %'],
+        ...mockMonthlyStats.map((m, idx) => {
+          const prevVehicles = idx > 0 ? mockMonthlyStats[idx - 1].vehicles : m.vehicles;
+          const prevInsp = idx > 0 ? mockMonthlyStats[idx - 1].inspections : m.inspections;
+          const varVehicles = idx > 0 ? ((m.vehicles - prevVehicles) / prevVehicles * 100).toFixed(1) + '%' : '-';
+          const varInsp = idx > 0 ? ((m.inspections - prevInsp) / prevInsp * 100).toFixed(1) + '%' : '-';
+          return [
+            m.month,
+            m.vehicles,
+            varVehicles,
+            m.inspections,
+            varInsp,
+            formatCurrency(m.revenue),
+            formatCurrency(m.profit),
+            ((m.profit / m.revenue) * 100).toFixed(1) + '%'
+          ];
+        }),
+        [],
+        ['TOTAIS', '', '', '', '', formatCurrency(totalRevenue), formatCurrency(totalProfit), profitMargin + '%']
       ];
-      const wsMonthly = XLSX.utils.aoa_to_sheet(monthlyData);
-      XLSX.utils.book_append_sheet(wb, wsMonthly, 'Mensal');
-      
-      // Aba 3: Status das Vistorias
-      const inspectionData = [
-        ['Status', 'Quantidade'],
-        ...pieData.map(p => [p.name, p.value])
+
+      // ===== ABA 3: VISTORIAS DETALHADAS =====
+      const vistoriasData: (string | number | undefined)[][] = [
+        ['LISTA DE VISTORIAS'],
+        [],
+        ['ID', 'Data', 'Placa', 'Veículo', 'Ano', 'Cor', 'Proprietário', 'Vistoriador', 'Status', 'Observações'],
+        ...mockInspections.map(i => [
+          i.id,
+          formatDate(i.date),
+          i.vehicle.plate,
+          i.vehicle.brand + ' ' + i.vehicle.model,
+          i.vehicle.year,
+          i.vehicle.color,
+          i.vehicle.ownerName,
+          i.employeeName,
+          translateStatus(i.status),
+          i.notes || '-'
+        ])
       ];
-      const wsInspections = XLSX.utils.aoa_to_sheet(inspectionData);
-      XLSX.utils.book_append_sheet(wb, wsInspections, 'Vistorias');
-      
-      // Aba 4: Status dos Veículos
-      const vehicleData = [
-        ['Status', 'Quantidade'],
-        ...vehicleStatusData.map(v => [v.name, v.value])
+
+      // ===== ABA 4: VEÍCULOS CADASTRADOS =====
+      const veiculosData: (string | number | undefined)[][] = [
+        ['CADASTRO DE VEÍCULOS'],
+        [],
+        ['Placa', 'Marca', 'Modelo', 'Ano', 'Cor', 'Proprietário', 'Status', 'Data Cadastro'],
+        ...mockVehicles.map(v => [
+          v.plate,
+          v.brand,
+          v.model,
+          v.year,
+          v.color,
+          v.ownerName,
+          translateVehicleStatus(v.status),
+          formatDate(v.createdAt)
+        ])
       ];
-      const wsVehicles = XLSX.utils.aoa_to_sheet(vehicleData);
-      XLSX.utils.book_append_sheet(wb, wsVehicles, 'Veículos');
-      
-      XLSX.writeFile(wb, `relatorio-${new Date().toISOString().split('T')[0]}.xlsx`);
+
+      // ===== ABA 5: ANÁLISE CHECKLIST =====
+      const checklistItems: (keyof typeof mockInspections[0]['checklist'])[] = ['exterior', 'interior', 'engine', 'tires', 'documents', 'lights'];
+      const checklistData: (string | number | undefined)[][] = [
+        ['ANÁLISE DE CHECKLIST'],
+        [],
+        ['Item Verificado', 'Aprovados', 'Reprovados', 'Taxa de Aprovação'],
+        ...checklistItems.map(item => {
+          const approved = mockInspections.filter(i => i.checklist[item]).length;
+          const total = mockInspections.length;
+          const rejected = total - approved;
+          return [
+            translateChecklistItem(item),
+            approved,
+            rejected,
+            ((approved / total) * 100).toFixed(0) + '%'
+          ];
+        }),
+        [],
+        ['RESUMO', '', '', ''],
+        ['Total de Itens Analisados', mockInspections.length * checklistItems.length, '', ''],
+        ['Média de Aprovação por Item', '', '', (checklistItems.reduce((acc, item) => {
+          return acc + mockInspections.filter(i => i.checklist[item]).length;
+        }, 0) / (mockInspections.length * checklistItems.length) * 100).toFixed(1) + '%']
+      ];
+
+      // Criar abas com largura de colunas otimizada
+      XLSX.utils.book_append_sheet(wb, createSheet(resumoData, [25, 22, 32]), 'Resumo');
+      XLSX.utils.book_append_sheet(wb, createSheet(mensalData, [10, 12, 10, 12, 10, 18, 18, 12]), 'Mensal');
+      XLSX.utils.book_append_sheet(wb, createSheet(vistoriasData, [6, 12, 12, 22, 8, 12, 22, 18, 15, 40]), 'Vistorias');
+      XLSX.utils.book_append_sheet(wb, createSheet(veiculosData, [12, 15, 18, 8, 12, 22, 14, 15]), 'Veículos');
+      XLSX.utils.book_append_sheet(wb, createSheet(checklistData, [20, 15, 15, 20]), 'Checklist');
+
+      XLSX.writeFile(wb, `relatorio-protectedcar-${new Date().toISOString().split('T')[0]}.xlsx`);
       
       toast({
-        title: "Excel exportado",
-        description: "O relatório foi baixado com sucesso."
+        title: "Excel exportado com sucesso!",
+        description: "Relatório completo com 5 abas detalhadas."
       });
     } catch (error) {
       toast({
