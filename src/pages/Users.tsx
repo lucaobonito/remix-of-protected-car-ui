@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import { Search, Plus, MoreVertical, Shield, Briefcase, User, Mail, Phone, Trash2 } from 'lucide-react';
+import { Search, Plus, MoreVertical, Shield, Briefcase, User, Mail, Phone, Trash2, Calendar, Eye, Edit } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -33,6 +33,8 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { useToast } from '@/hooks/use-toast';
+import { Separator } from '@/components/ui/separator';
+import { Switch } from '@/components/ui/switch';
 
 interface UserData {
   id: string;
@@ -59,7 +61,11 @@ export default function Users() {
   const [statusFilter, setStatusFilter] = useState('all');
   const [isNewUserOpen, setIsNewUserOpen] = useState(false);
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
+  const [isDetailsOpen, setIsDetailsOpen] = useState(false);
+  const [isEditOpen, setIsEditOpen] = useState(false);
   const [userToDelete, setUserToDelete] = useState<UserData | null>(null);
+  const [selectedUser, setSelectedUser] = useState<UserData | null>(null);
+  const [editUser, setEditUser] = useState<UserData | null>(null);
   const [newUser, setNewUser] = useState({
     name: '',
     email: '',
@@ -146,6 +152,50 @@ export default function Users() {
     
     setUserToDelete(null);
   };
+
+  const handleViewDetails = (user: UserData) => {
+    setSelectedUser(user);
+    setIsDetailsOpen(true);
+  };
+
+  const handleEditUser = (user: UserData) => {
+    setEditUser({ ...user });
+    setIsEditOpen(true);
+  };
+
+  const handleSaveEdit = () => {
+    if (!editUser) return;
+
+    if (!editUser.name.trim() || !editUser.email.trim()) {
+      toast({
+        title: "Erro",
+        description: "Nome e e-mail são obrigatórios.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    const avatar = editUser.name
+      .split(' ')
+      .map(n => n[0])
+      .join('')
+      .toUpperCase()
+      .slice(0, 2);
+
+    setUsers(prev => prev.map(u => 
+      u.id === editUser.id ? { ...editUser, avatar } : u
+    ));
+    
+    setIsEditOpen(false);
+    toast({
+      title: "Usuário atualizado",
+      description: `${editUser.name} foi atualizado com sucesso.`
+    });
+    setEditUser(null);
+  };
+
+  const formatDate = (dateStr: string) => 
+    new Date(dateStr).toLocaleDateString('pt-BR');
 
   return (
     <AppLayout title="Usuários">
@@ -256,8 +306,14 @@ export default function Users() {
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
-                        <DropdownMenuItem>Ver Detalhes</DropdownMenuItem>
-                        <DropdownMenuItem>Editar</DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => handleViewDetails(user)}>
+                          <Eye className="h-4 w-4 mr-2" />
+                          Ver Detalhes
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => handleEditUser(user)}>
+                          <Edit className="h-4 w-4 mr-2" />
+                          Editar
+                        </DropdownMenuItem>
                         <DropdownMenuItem 
                           className="text-destructive"
                           onClick={() => {
@@ -370,6 +426,157 @@ export default function Users() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* View Details Dialog */}
+      <Dialog open={isDetailsOpen} onOpenChange={setIsDetailsOpen}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-3">
+              <Avatar className="h-10 w-10">
+                <AvatarFallback className="bg-primary text-primary-foreground font-semibold">
+                  {selectedUser?.avatar}
+                </AvatarFallback>
+              </Avatar>
+              {selectedUser?.name}
+            </DialogTitle>
+            <DialogDescription>
+              Informações detalhadas do usuário
+            </DialogDescription>
+          </DialogHeader>
+          {selectedUser && (
+            <div className="space-y-4 py-4">
+              <div className="flex items-center gap-2">
+                {getRoleBadge(selectedUser.role)}
+                {getStatusBadge(selectedUser.status)}
+              </div>
+              
+              <Separator />
+              
+              <div className="grid gap-4">
+                <div className="flex items-center gap-3">
+                  <Mail className="h-5 w-5 text-muted-foreground" />
+                  <div>
+                    <p className="text-sm text-muted-foreground">E-mail</p>
+                    <p className="font-medium">{selectedUser.email}</p>
+                  </div>
+                </div>
+                
+                <div className="flex items-center gap-3">
+                  <Phone className="h-5 w-5 text-muted-foreground" />
+                  <div>
+                    <p className="text-sm text-muted-foreground">Telefone</p>
+                    <p className="font-medium">{selectedUser.phone || 'Não informado'}</p>
+                  </div>
+                </div>
+                
+                <div className="flex items-center gap-3">
+                  <Calendar className="h-5 w-5 text-muted-foreground" />
+                  <div>
+                    <p className="text-sm text-muted-foreground">Cadastrado em</p>
+                    <p className="font-medium">{formatDate(selectedUser.createdAt)}</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsDetailsOpen(false)}>
+              Fechar
+            </Button>
+            <Button onClick={() => {
+              setIsDetailsOpen(false);
+              if (selectedUser) handleEditUser(selectedUser);
+            }}>
+              <Edit className="h-4 w-4 mr-2" />
+              Editar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit User Dialog */}
+      <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Editar Usuário</DialogTitle>
+            <DialogDescription>
+              Atualize as informações do usuário.
+            </DialogDescription>
+          </DialogHeader>
+          {editUser && (
+            <div className="space-y-4 py-4">
+              <div className="space-y-2">
+                <Label htmlFor="edit-name">Nome *</Label>
+                <Input
+                  id="edit-name"
+                  placeholder="Nome completo"
+                  value={editUser.name}
+                  onChange={(e) => setEditUser(prev => prev ? { ...prev, name: e.target.value } : null)}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit-email">E-mail *</Label>
+                <Input
+                  id="edit-email"
+                  type="email"
+                  placeholder="email@empresa.com"
+                  value={editUser.email}
+                  onChange={(e) => setEditUser(prev => prev ? { ...prev, email: e.target.value } : null)}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit-phone">Telefone</Label>
+                <Input
+                  id="edit-phone"
+                  placeholder="(11) 99999-0000"
+                  value={editUser.phone}
+                  onChange={(e) => setEditUser(prev => prev ? { ...prev, phone: e.target.value } : null)}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit-role">Perfil *</Label>
+                <Select 
+                  value={editUser.role} 
+                  onValueChange={(value: 'admin' | 'employee') => setEditUser(prev => prev ? { ...prev, role: value } : null)}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione o perfil" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="employee">Funcionário</SelectItem>
+                    <SelectItem value="admin">Administrador</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="flex items-center justify-between">
+                <div className="space-y-0.5">
+                  <Label>Status</Label>
+                  <p className="text-sm text-muted-foreground">
+                    {editUser.status === 'active' ? 'Usuário ativo' : 'Usuário inativo'}
+                  </p>
+                </div>
+                <Switch
+                  checked={editUser.status === 'active'}
+                  onCheckedChange={(checked) => 
+                    setEditUser(prev => prev ? { ...prev, status: checked ? 'active' : 'inactive' } : null)
+                  }
+                />
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => {
+              setIsEditOpen(false);
+              setEditUser(null);
+            }}>
+              Cancelar
+            </Button>
+            <Button onClick={handleSaveEdit}>
+              Salvar Alterações
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </AppLayout>
   );
 }
