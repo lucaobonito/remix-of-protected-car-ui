@@ -1,9 +1,10 @@
-import { useRef, useState } from 'react';
+import { useRef, useState, useMemo } from 'react';
 import { AppLayout } from '@/components/AppLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Download, TrendingUp, TrendingDown, DollarSign, Car, ClipboardCheck, Users, Loader2, FileSpreadsheet } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { Download, TrendingUp, TrendingDown, DollarSign, Car, ClipboardCheck, Users, Loader2, FileSpreadsheet, CalendarDays } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import {
   AreaChart,
@@ -30,22 +31,108 @@ export default function Reports() {
   const reportRef = useRef<HTMLDivElement>(null);
   const [isExporting, setIsExporting] = useState(false);
   const [isExportingExcel, setIsExportingExcel] = useState(false);
+  const [selectedYear, setSelectedYear] = useState<string>('2024');
+  const [selectedPeriod, setSelectedPeriod] = useState<string>('all');
 
+  // Mapeamento de meses para números
+  const monthToNumber: Record<string, number> = {
+    'Jan': 1, 'Fev': 2, 'Mar': 3, 'Abr': 4, 'Mai': 5, 'Jun': 6,
+    'Jul': 7, 'Ago': 8, 'Set': 9, 'Out': 10, 'Nov': 11, 'Dez': 12
+  };
+
+  // Filtrar estatísticas mensais
+  const filteredMonthlyStats = useMemo(() => {
+    let filtered = mockMonthlyStats;
+    
+    if (selectedPeriod === 'q1') {
+      filtered = filtered.filter(m => ['Jan', 'Fev', 'Mar'].includes(m.month));
+    } else if (selectedPeriod === 'q2') {
+      filtered = filtered.filter(m => ['Abr', 'Mai', 'Jun'].includes(m.month));
+    } else if (selectedPeriod === 'q3') {
+      filtered = filtered.filter(m => ['Jul', 'Ago', 'Set'].includes(m.month));
+    } else if (selectedPeriod === 'q4') {
+      filtered = filtered.filter(m => ['Out', 'Nov', 'Dez'].includes(m.month));
+    }
+    
+    return filtered;
+  }, [selectedPeriod]);
+
+  // Filtrar vistorias por data
+  const filteredInspections = useMemo(() => {
+    return mockInspections.filter(inspection => {
+      const inspDate = new Date(inspection.date);
+      const inspYear = inspDate.getFullYear().toString();
+      const inspMonth = inspDate.getMonth() + 1;
+      
+      if (inspYear !== selectedYear) return false;
+      
+      if (selectedPeriod === 'q1' && (inspMonth < 1 || inspMonth > 3)) return false;
+      if (selectedPeriod === 'q2' && (inspMonth < 4 || inspMonth > 6)) return false;
+      if (selectedPeriod === 'q3' && (inspMonth < 7 || inspMonth > 9)) return false;
+      if (selectedPeriod === 'q4' && (inspMonth < 10 || inspMonth > 12)) return false;
+      
+      return true;
+    });
+  }, [selectedYear, selectedPeriod]);
+
+  // Filtrar veículos por data de cadastro
+  const filteredVehicles = useMemo(() => {
+    return mockVehicles.filter(vehicle => {
+      const vDate = new Date(vehicle.createdAt);
+      const vYear = vDate.getFullYear().toString();
+      const vMonth = vDate.getMonth() + 1;
+      
+      if (vYear !== selectedYear) return false;
+      
+      if (selectedPeriod === 'q1' && (vMonth < 1 || vMonth > 3)) return false;
+      if (selectedPeriod === 'q2' && (vMonth < 4 || vMonth > 6)) return false;
+      if (selectedPeriod === 'q3' && (vMonth < 7 || vMonth > 9)) return false;
+      if (selectedPeriod === 'q4' && (vMonth < 10 || vMonth > 12)) return false;
+      
+      return true;
+    });
+  }, [selectedYear, selectedPeriod]);
+
+  // KPIs calculados com dados filtrados
+  const totalRevenue = filteredMonthlyStats.reduce((acc, m) => acc + m.revenue, 0);
+  const totalProfit = filteredMonthlyStats.reduce((acc, m) => acc + m.profit, 0);
+  const profitMargin = totalRevenue > 0 ? ((totalProfit / totalRevenue) * 100).toFixed(1) : '0';
+
+  const approvedInspections = filteredInspections.filter(i => i.status === 'approved').length;
+  const pendingInspections = filteredInspections.filter(i => i.status === 'pending' || i.status === 'in_progress').length;
+  const rejectedInspections = filteredInspections.filter(i => i.status === 'rejected').length;
+  const approvalRate = filteredInspections.length > 0 
+    ? Math.round((approvedInspections / filteredInspections.length) * 100) 
+    : 0;
+
+  const activeVehicles = filteredVehicles.filter(v => v.status === 'protected').length;
+  const pendingVehicles = filteredVehicles.filter(v => v.status === 'pending').length;
+  const expiredVehicles = filteredVehicles.filter(v => v.status === 'expired').length;
+
+  // Dados para gráficos de pizza
   const pieData = [
-    { name: 'Aprovadas', value: mockInspections.filter(i => i.status === 'approved').length, color: 'hsl(var(--success))' },
-    { name: 'Pendentes', value: mockInspections.filter(i => i.status === 'pending' || i.status === 'in_progress').length, color: 'hsl(var(--warning))' },
-    { name: 'Rejeitadas', value: mockInspections.filter(i => i.status === 'rejected').length, color: 'hsl(var(--destructive))' },
+    { name: 'Aprovadas', value: approvedInspections, color: 'hsl(var(--success))' },
+    { name: 'Pendentes', value: pendingInspections, color: 'hsl(var(--warning))' },
+    { name: 'Rejeitadas', value: rejectedInspections, color: 'hsl(var(--destructive))' },
   ];
 
   const vehicleStatusData = [
-    { name: 'Protegidos', value: mockVehicles.filter(v => v.status === 'protected').length, color: 'hsl(var(--success))' },
-    { name: 'Pendentes', value: mockVehicles.filter(v => v.status === 'pending').length, color: 'hsl(var(--warning))' },
-    { name: 'Expirados', value: mockVehicles.filter(v => v.status === 'expired').length, color: 'hsl(var(--destructive))' },
+    { name: 'Protegidos', value: activeVehicles, color: 'hsl(var(--success))' },
+    { name: 'Pendentes', value: pendingVehicles, color: 'hsl(var(--warning))' },
+    { name: 'Expirados', value: expiredVehicles, color: 'hsl(var(--destructive))' },
   ];
 
-  const totalRevenue = mockMonthlyStats.reduce((acc, m) => acc + m.revenue, 0);
-  const totalProfit = mockMonthlyStats.reduce((acc, m) => acc + m.profit, 0);
-  const profitMargin = ((totalProfit / totalRevenue) * 100).toFixed(1);
+  // Label do período selecionado
+  const getPeriodLabel = () => {
+    const periodLabels: Record<string, string> = {
+      'all': 'Ano completo',
+      'q1': '1º Trimestre (Jan-Mar)',
+      'q2': '2º Trimestre (Abr-Jun)',
+      'q3': '3º Trimestre (Jul-Set)',
+      'q4': '4º Trimestre (Out-Dez)',
+    };
+    return periodLabels[selectedPeriod] || 'Ano completo';
+  };
 
   const handleExportPDF = async () => {
     if (!reportRef.current) return;
@@ -84,11 +171,12 @@ export default function Reports() {
         heightLeft -= pdfHeight;
       }
       
-      pdf.save(`relatorio-${new Date().toISOString().split('T')[0]}.pdf`);
+      const periodLabel = selectedPeriod === 'all' ? 'completo' : selectedPeriod;
+      pdf.save(`relatorio-${selectedYear}-${periodLabel}-${new Date().toISOString().split('T')[0]}.pdf`);
       
       toast({
         title: "PDF exportado",
-        description: "O relatório foi baixado com sucesso."
+        description: `Relatório de ${selectedYear} - ${getPeriodLabel()} baixado com sucesso.`
       });
     } catch (error) {
       toast({
@@ -145,7 +233,9 @@ export default function Reports() {
     try {
       const wb = XLSX.utils.book_new();
       const dataAtual = new Date().toLocaleDateString('pt-BR');
-      const taxaAprovacao = Math.round((mockInspections.filter(i => i.status === 'approved').length / mockInspections.length) * 100);
+      const taxaAprovacao = filteredInspections.length > 0 
+        ? Math.round((approvedInspections / filteredInspections.length) * 100)
+        : 0;
 
       // Função auxiliar para criar planilha com largura de colunas
       const createSheet = (data: (string | number | undefined)[][], colWidths: number[]) => {
@@ -157,36 +247,37 @@ export default function Reports() {
       // ===== ABA 1: RESUMO EXECUTIVO =====
       const resumoData: (string | number | undefined)[][] = [
         ['RELATÓRIO GERENCIAL - PROTECTED CAR'],
+        [`Período: ${selectedYear} - ${getPeriodLabel()}`],
         ['Gerado em: ' + dataAtual],
         [],
         ['INDICADORES PRINCIPAIS', '', ''],
         ['Indicador', 'Valor', 'Observação'],
-        ['Receita Total', formatCurrency(totalRevenue), '+15.3% vs período anterior'],
-        ['Lucro Líquido', formatCurrency(totalProfit), '+12.1% vs período anterior'],
+        ['Receita Total', formatCurrency(totalRevenue), ''],
+        ['Lucro Líquido', formatCurrency(totalProfit), ''],
         ['Margem de Lucro', profitMargin + '%', 'Meta: 30%'],
         [],
-        ['FROTA', '', ''],
-        ['Total de Veículos', mockVehicles.length, ''],
-        ['Veículos Protegidos', mockVehicles.filter(v => v.status === 'protected').length, 'Status ativo'],
-        ['Veículos Pendentes', mockVehicles.filter(v => v.status === 'pending').length, 'Aguardando vistoria'],
-        ['Veículos Expirados', mockVehicles.filter(v => v.status === 'expired').length, 'Requer renovação'],
+        ['FROTA (no período)', '', ''],
+        ['Total de Veículos', filteredVehicles.length, ''],
+        ['Veículos Protegidos', activeVehicles, 'Status ativo'],
+        ['Veículos Pendentes', pendingVehicles, 'Aguardando vistoria'],
+        ['Veículos Expirados', expiredVehicles, 'Requer renovação'],
         [],
-        ['VISTORIAS', '', ''],
-        ['Total de Vistorias', mockInspections.length, ''],
-        ['Aprovadas', mockInspections.filter(i => i.status === 'approved').length, ''],
-        ['Pendentes', mockInspections.filter(i => i.status === 'pending' || i.status === 'in_progress').length, ''],
-        ['Rejeitadas', mockInspections.filter(i => i.status === 'rejected').length, ''],
+        ['VISTORIAS (no período)', '', ''],
+        ['Total de Vistorias', filteredInspections.length, ''],
+        ['Aprovadas', approvedInspections, ''],
+        ['Pendentes', pendingInspections, ''],
+        ['Rejeitadas', rejectedInspections, ''],
         ['Taxa de Aprovação', taxaAprovacao + '%', ''],
       ];
 
       // ===== ABA 2: ESTATÍSTICAS MENSAIS =====
       const mensalData: (string | number | undefined)[][] = [
-        ['ESTATÍSTICAS MENSAIS - ' + new Date().getFullYear()],
+        [`ESTATÍSTICAS MENSAIS - ${selectedYear} - ${getPeriodLabel()}`],
         [],
         ['Mês', 'Veículos', 'Var %', 'Vistorias', 'Var %', 'Receita (R$)', 'Lucro (R$)', 'Margem %'],
-        ...mockMonthlyStats.map((m, idx) => {
-          const prevVehicles = idx > 0 ? mockMonthlyStats[idx - 1].vehicles : m.vehicles;
-          const prevInsp = idx > 0 ? mockMonthlyStats[idx - 1].inspections : m.inspections;
+        ...filteredMonthlyStats.map((m, idx) => {
+          const prevVehicles = idx > 0 ? filteredMonthlyStats[idx - 1].vehicles : m.vehicles;
+          const prevInsp = idx > 0 ? filteredMonthlyStats[idx - 1].inspections : m.inspections;
           const varVehicles = idx > 0 ? ((m.vehicles - prevVehicles) / prevVehicles * 100).toFixed(1) + '%' : '-';
           const varInsp = idx > 0 ? ((m.inspections - prevInsp) / prevInsp * 100).toFixed(1) + '%' : '-';
           return [
@@ -206,10 +297,10 @@ export default function Reports() {
 
       // ===== ABA 3: VISTORIAS DETALHADAS =====
       const vistoriasData: (string | number | undefined)[][] = [
-        ['LISTA DE VISTORIAS'],
+        [`LISTA DE VISTORIAS - ${selectedYear} - ${getPeriodLabel()}`],
         [],
         ['ID', 'Data', 'Placa', 'Veículo', 'Ano', 'Cor', 'Proprietário', 'Vistoriador', 'Status', 'Observações'],
-        ...mockInspections.map(i => [
+        ...filteredInspections.map(i => [
           i.id,
           formatDate(i.date),
           i.vehicle.plate,
@@ -225,10 +316,10 @@ export default function Reports() {
 
       // ===== ABA 4: VEÍCULOS CADASTRADOS =====
       const veiculosData: (string | number | undefined)[][] = [
-        ['CADASTRO DE VEÍCULOS'],
+        [`CADASTRO DE VEÍCULOS - ${selectedYear} - ${getPeriodLabel()}`],
         [],
         ['Placa', 'Marca', 'Modelo', 'Ano', 'Cor', 'Proprietário', 'Status', 'Data Cadastro'],
-        ...mockVehicles.map(v => [
+        ...filteredVehicles.map(v => [
           v.plate,
           v.brand,
           v.model,
@@ -241,28 +332,28 @@ export default function Reports() {
       ];
 
       // ===== ABA 5: ANÁLISE CHECKLIST =====
-      const checklistItems: (keyof typeof mockInspections[0]['checklist'])[] = ['exterior', 'interior', 'engine', 'tires', 'documents', 'lights'];
+      const checklistItems: (keyof typeof filteredInspections[0]['checklist'])[] = ['exterior', 'interior', 'engine', 'tires', 'documents', 'lights'];
       const checklistData: (string | number | undefined)[][] = [
-        ['ANÁLISE DE CHECKLIST'],
+        [`ANÁLISE DE CHECKLIST - ${selectedYear} - ${getPeriodLabel()}`],
         [],
         ['Item Verificado', 'Aprovados', 'Reprovados', 'Taxa de Aprovação'],
         ...checklistItems.map(item => {
-          const approved = mockInspections.filter(i => i.checklist[item]).length;
-          const total = mockInspections.length;
+          const approved = filteredInspections.filter(i => i.checklist[item]).length;
+          const total = filteredInspections.length;
           const rejected = total - approved;
           return [
             translateChecklistItem(item),
             approved,
             rejected,
-            ((approved / total) * 100).toFixed(0) + '%'
+            total > 0 ? ((approved / total) * 100).toFixed(0) + '%' : '0%'
           ];
         }),
         [],
         ['RESUMO', '', '', ''],
-        ['Total de Itens Analisados', mockInspections.length * checklistItems.length, '', ''],
-        ['Média de Aprovação por Item', '', '', (checklistItems.reduce((acc, item) => {
-          return acc + mockInspections.filter(i => i.checklist[item]).length;
-        }, 0) / (mockInspections.length * checklistItems.length) * 100).toFixed(1) + '%']
+        ['Total de Itens Analisados', filteredInspections.length * checklistItems.length, '', ''],
+        ['Média de Aprovação por Item', '', '', filteredInspections.length > 0 ? (checklistItems.reduce((acc, item) => {
+          return acc + filteredInspections.filter(i => i.checklist[item]).length;
+        }, 0) / (filteredInspections.length * checklistItems.length) * 100).toFixed(1) + '%' : '0%']
       ];
 
       // Criar abas com largura de colunas otimizada
@@ -272,11 +363,12 @@ export default function Reports() {
       XLSX.utils.book_append_sheet(wb, createSheet(veiculosData, [12, 15, 18, 8, 12, 22, 14, 15]), 'Veículos');
       XLSX.utils.book_append_sheet(wb, createSheet(checklistData, [20, 15, 15, 20]), 'Checklist');
 
-      XLSX.writeFile(wb, `relatorio-protectedcar-${new Date().toISOString().split('T')[0]}.xlsx`);
+      const periodLabel = selectedPeriod === 'all' ? 'completo' : selectedPeriod;
+      XLSX.writeFile(wb, `relatorio-protectedcar-${selectedYear}-${periodLabel}-${new Date().toISOString().split('T')[0]}.xlsx`);
       
       toast({
         title: "Excel exportado com sucesso!",
-        description: "Relatório completo com 5 abas detalhadas."
+        description: `Relatório de ${selectedYear} - ${getPeriodLabel()} com 5 abas detalhadas.`
       });
     } catch (error) {
       toast({
@@ -294,8 +386,8 @@ export default function Reports() {
       <div className="space-y-6 animate-fade-in">
         {/* Filters */}
         <div className="flex flex-col md:flex-row justify-between gap-4">
-          <div className="flex gap-4">
-            <Select defaultValue="2024">
+          <div className="flex flex-wrap items-center gap-4">
+            <Select value={selectedYear} onValueChange={setSelectedYear}>
               <SelectTrigger className="w-32">
                 <SelectValue placeholder="Ano" />
               </SelectTrigger>
@@ -304,16 +396,22 @@ export default function Reports() {
                 <SelectItem value="2023">2023</SelectItem>
               </SelectContent>
             </Select>
-            <Select defaultValue="all">
-              <SelectTrigger className="w-40">
+            <Select value={selectedPeriod} onValueChange={setSelectedPeriod}>
+              <SelectTrigger className="w-44">
                 <SelectValue placeholder="Período" />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">Todos os meses</SelectItem>
                 <SelectItem value="q1">1º Trimestre</SelectItem>
                 <SelectItem value="q2">2º Trimestre</SelectItem>
+                <SelectItem value="q3">3º Trimestre</SelectItem>
+                <SelectItem value="q4">4º Trimestre</SelectItem>
               </SelectContent>
-          </Select>
+            </Select>
+            <Badge variant="outline" className="gap-1.5 py-1.5">
+              <CalendarDays className="h-3.5 w-3.5" />
+              {selectedYear} - {getPeriodLabel()}
+            </Badge>
           </div>
           <div className="flex gap-2">
             <Button 
@@ -364,9 +462,11 @@ export default function Reports() {
               <div className="flex items-start justify-between">
                 <div>
                   <p className="text-sm text-muted-foreground">Receita Total</p>
-                  <p className="text-2xl font-bold text-foreground">R$ {(totalRevenue / 1000).toFixed(0)}k</p>
-                  <p className="text-sm text-success flex items-center gap-1 mt-1">
-                    <TrendingUp className="h-4 w-4" /> +15.3%
+                  <p className="text-2xl font-bold text-foreground">
+                    {totalRevenue > 0 ? `R$ ${(totalRevenue / 1000).toFixed(0)}k` : 'R$ 0'}
+                  </p>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    {filteredMonthlyStats.length} meses
                   </p>
                 </div>
                 <DollarSign className="h-8 w-8 text-primary" />
@@ -379,7 +479,9 @@ export default function Reports() {
               <div className="flex items-start justify-between">
                 <div>
                   <p className="text-sm text-muted-foreground">Lucro Líquido</p>
-                  <p className="text-2xl font-bold text-foreground">R$ {(totalProfit / 1000).toFixed(0)}k</p>
+                  <p className="text-2xl font-bold text-foreground">
+                    {totalProfit > 0 ? `R$ ${(totalProfit / 1000).toFixed(0)}k` : 'R$ 0'}
+                  </p>
                   <p className="text-sm text-success flex items-center gap-1 mt-1">
                     <TrendingUp className="h-4 w-4" /> Margem: {profitMargin}%
                   </p>
@@ -394,9 +496,9 @@ export default function Reports() {
               <div className="flex items-start justify-between">
                 <div>
                   <p className="text-sm text-muted-foreground">Veículos Ativos</p>
-                  <p className="text-2xl font-bold text-foreground">{mockVehicles.filter(v => v.status === 'protected').length}</p>
-                  <p className="text-sm text-success flex items-center gap-1 mt-1">
-                    <TrendingUp className="h-4 w-4" /> +8 este mês
+                  <p className="text-2xl font-bold text-foreground">{activeVehicles}</p>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    de {filteredVehicles.length} no período
                   </p>
                 </div>
                 <Car className="h-8 w-8 text-accent" />
@@ -409,11 +511,9 @@ export default function Reports() {
               <div className="flex items-start justify-between">
                 <div>
                   <p className="text-sm text-muted-foreground">Taxa de Aprovação</p>
-                  <p className="text-2xl font-bold text-foreground">
-                    {Math.round((mockInspections.filter(i => i.status === 'approved').length / mockInspections.length) * 100)}%
-                  </p>
+                  <p className="text-2xl font-bold text-foreground">{approvalRate}%</p>
                   <p className="text-sm text-muted-foreground mt-1">
-                    {mockInspections.length} vistorias
+                    {filteredInspections.length} vistorias
                   </p>
                 </div>
                 <ClipboardCheck className="h-8 w-8 text-warning" />
@@ -430,7 +530,7 @@ export default function Reports() {
             </CardHeader>
             <CardContent>
               <ResponsiveContainer width="100%" height={300}>
-                <AreaChart data={mockMonthlyStats}>
+                <AreaChart data={filteredMonthlyStats}>
                   <defs>
                     <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
                       <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.3} />
@@ -480,7 +580,7 @@ export default function Reports() {
             </CardHeader>
             <CardContent>
               <ResponsiveContainer width="100%" height={300}>
-                <BarChart data={mockMonthlyStats}>
+                <BarChart data={filteredMonthlyStats}>
                   <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
                   <XAxis dataKey="month" tick={{ fill: 'hsl(var(--muted-foreground))' }} />
                   <YAxis tick={{ fill: 'hsl(var(--muted-foreground))' }} />
