@@ -6,6 +6,7 @@ import { KanbanCard } from '@/components/KanbanCard';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useVehicles } from '@/contexts/VehiclesContext';
+import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { Inspection } from '@/data/mockData';
 
@@ -25,6 +26,7 @@ const statusLabels: Record<string, string> = {
 
 export default function Kanban() {
   const { inspections, updateInspectionStatus } = useVehicles();
+  const { user } = useAuth();
   const { toast } = useToast();
   const [searchTerm, setSearchTerm] = useState('');
   const [employeeFilter, setEmployeeFilter] = useState('all');
@@ -69,9 +71,15 @@ export default function Kanban() {
 
   const handleDrop = (inspectionId: string, newStatus: string) => {
     const inspection = inspections.find(i => i.id === inspectionId);
-    if (!inspection || inspection.status === newStatus) return;
+    if (!inspection || inspection.status === newStatus || !user) return;
 
-    updateInspectionStatus(inspectionId, newStatus as Inspection['status']);
+    updateInspectionStatus(
+      inspectionId, 
+      newStatus as Inspection['status'],
+      user.id,
+      user.name,
+      'Status alterado via Kanban'
+    );
     
     toast({
       title: "Vistoria movida",

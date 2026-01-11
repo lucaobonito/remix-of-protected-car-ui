@@ -11,6 +11,16 @@ export interface Vehicle {
   createdAt: string;
 }
 
+export interface StatusHistoryEntry {
+  id: string;
+  previousStatus: Inspection['status'];
+  newStatus: Inspection['status'];
+  changedBy: string;
+  changedById: string;
+  changedAt: string;
+  notes?: string;
+}
+
 export interface Inspection {
   id: string;
   vehicleId: string;
@@ -29,6 +39,7 @@ export interface Inspection {
     lights: boolean;
   };
   notes?: string;
+  statusHistory?: StatusHistoryEntry[];
 }
 
 export interface MonthlyStats {
@@ -67,6 +78,26 @@ export const mockInspections: Inspection[] = [
     photos: [],
     checklist: { exterior: true, interior: true, engine: true, tires: true, documents: true, lights: true },
     notes: 'Veículo em excelente estado',
+    statusHistory: [
+      {
+        id: '1',
+        previousStatus: 'pending',
+        newStatus: 'in_progress',
+        changedBy: 'Admin User',
+        changedById: '1',
+        changedAt: '2024-01-16T09:00:00.000Z',
+        notes: 'Iniciando análise do veículo'
+      },
+      {
+        id: '2',
+        previousStatus: 'in_progress',
+        newStatus: 'approved',
+        changedBy: 'Admin User',
+        changedById: '1',
+        changedAt: '2024-01-16T14:30:00.000Z',
+        notes: 'Veículo em conformidade total'
+      }
+    ],
   },
   {
     id: '2',
