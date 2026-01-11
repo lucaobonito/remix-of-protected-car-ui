@@ -1,12 +1,18 @@
 import React, { createContext, useContext, useState, ReactNode } from 'react';
-import { Vehicle, Inspection, mockVehicles, mockInspections } from '@/data/mockData';
+import { Vehicle, Inspection, StatusHistoryEntry, mockVehicles, mockInspections } from '@/data/mockData';
 
 interface VehiclesContextType {
   vehicles: Vehicle[];
   inspections: Inspection[];
   addVehicle: (vehicle: Omit<Vehicle, 'id' | 'createdAt'>) => Vehicle;
   addInspection: (inspection: Omit<Inspection, 'id'>) => Inspection;
-  updateInspectionStatus: (inspectionId: string, newStatus: Inspection['status']) => void;
+  updateInspectionStatus: (
+    inspectionId: string, 
+    newStatus: Inspection['status'],
+    userId: string,
+    userName: string,
+    notes?: string
+  ) => void;
   getEmployeeStats: (employeeId: string) => {
     total: number;
     approved: number;
@@ -40,13 +46,33 @@ export function VehiclesProvider({ children }: { children: ReactNode }) {
     return newInspection;
   };
 
-  const updateInspectionStatus = (inspectionId: string, newStatus: Inspection['status']) => {
+  const updateInspectionStatus = (
+    inspectionId: string, 
+    newStatus: Inspection['status'],
+    userId: string,
+    userName: string,
+    notes?: string
+  ) => {
     setInspections(prev => 
-      prev.map(inspection => 
-        inspection.id === inspectionId 
-          ? { ...inspection, status: newStatus }
-          : inspection
-      )
+      prev.map(inspection => {
+        if (inspection.id !== inspectionId) return inspection;
+
+        const historyEntry: StatusHistoryEntry = {
+          id: String(Date.now()),
+          previousStatus: inspection.status,
+          newStatus,
+          changedBy: userName,
+          changedById: userId,
+          changedAt: new Date().toISOString(),
+          notes
+        };
+
+        return {
+          ...inspection,
+          status: newStatus,
+          statusHistory: [...(inspection.statusHistory || []), historyEntry]
+        };
+      })
     );
   };
 

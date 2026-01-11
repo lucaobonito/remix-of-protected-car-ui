@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
-import { Search, Filter, Eye, Calendar, User, CheckCircle, XCircle, Clock, AlertCircle, MoreVertical, Edit } from 'lucide-react';
+import { Search, Filter, Eye, Calendar, User, CheckCircle, XCircle, Clock, AlertCircle, MoreVertical, Edit, History } from 'lucide-react';
 import { useVehicles } from '@/contexts/VehiclesContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
@@ -103,6 +103,14 @@ export default function Inspections() {
   const formatDate = (dateStr: string) => 
     new Date(dateStr).toLocaleDateString('pt-BR');
 
+  const formatDateTime = (dateStr: string) => {
+    const date = new Date(dateStr);
+    return `${date.toLocaleDateString('pt-BR')} às ${date.toLocaleTimeString('pt-BR', { 
+      hour: '2-digit', 
+      minute: '2-digit' 
+    })}`;
+  };
+
   const handleViewDetails = (inspection: Inspection) => {
     setSelectedInspection(inspection);
     setIsDetailsOpen(true);
@@ -116,9 +124,15 @@ export default function Inspections() {
   };
 
   const handleStatusChange = () => {
-    if (!selectedInspection) return;
+    if (!selectedInspection || !user) return;
 
-    updateInspectionStatus(selectedInspection.id, newStatus);
+    updateInspectionStatus(
+      selectedInspection.id, 
+      newStatus,
+      user.id,
+      user.name,
+      statusNotes || undefined
+    );
     setIsStatusChangeOpen(false);
     
     toast({
@@ -389,6 +403,37 @@ export default function Inspections() {
                   <div>
                     <h4 className="font-medium text-sm text-muted-foreground mb-2">OBSERVAÇÕES</h4>
                     <p className="text-sm">{selectedInspection.notes}</p>
+                  </div>
+                </>
+              )}
+
+              {/* Status History */}
+              {selectedInspection.statusHistory && selectedInspection.statusHistory.length > 0 && (
+                <>
+                  <Separator />
+                  <div>
+                    <h4 className="font-medium text-sm text-muted-foreground mb-3 flex items-center gap-2">
+                      <History className="h-4 w-4" />
+                      HISTÓRICO DE ALTERAÇÕES
+                    </h4>
+                    <div className="space-y-3 max-h-48 overflow-y-auto">
+                      {selectedInspection.statusHistory.map((entry) => (
+                        <div key={entry.id} className="p-3 rounded-lg bg-muted/50 text-sm border border-border/50">
+                          <div className="flex items-center gap-2 font-medium">
+                            {getStatusIcon(entry.newStatus)}
+                            <span className="text-muted-foreground">{translateStatus(entry.previousStatus)}</span>
+                            <span className="text-muted-foreground">→</span>
+                            <span>{translateStatus(entry.newStatus)}</span>
+                          </div>
+                          <p className="text-xs text-muted-foreground mt-1">
+                            Por: <span className="font-medium">{entry.changedBy}</span> • {formatDateTime(entry.changedAt)}
+                          </p>
+                          {entry.notes && (
+                            <p className="text-xs mt-2 italic text-foreground/80">"{entry.notes}"</p>
+                          )}
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 </>
               )}
