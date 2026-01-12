@@ -36,6 +36,14 @@ const mockUsers: Record<UserRole, User> = {
   },
 };
 
+// Callback type for audit logging (injected to avoid circular dependency)
+type AuditCallback = (action: 'LOGIN' | 'LOGOUT', userId: string, userName: string) => void;
+let auditCallback: AuditCallback | null = null;
+
+export function setAuditCallback(callback: AuditCallback) {
+  auditCallback = callback;
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
 
@@ -44,13 +52,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await new Promise(resolve => setTimeout(resolve, 800));
     
     if (password.length >= 4) {
-      setUser(mockUsers[role]);
+      const loggedUser = mockUsers[role];
+      setUser(loggedUser);
+      // Audit log will be handled by AuditProvider after mount
+      setTimeout(() => {
+        if (auditCallback) {
+          auditCallback('LOGIN', loggedUser.id, loggedUser.name);
+        }
+      }, 100);
       return true;
     }
     return false;
   };
 
   const logout = () => {
+    if (user && auditCallback) {
+      auditCallback('LOGOUT', user.id, user.name);
+    }
     setUser(null);
   };
 

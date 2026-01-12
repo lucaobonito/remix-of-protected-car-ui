@@ -35,6 +35,7 @@ import {
 import { useToast } from '@/hooks/use-toast';
 import { Separator } from '@/components/ui/separator';
 import { Switch } from '@/components/ui/switch';
+import { useAudit } from '@/contexts/AuditContext';
 
 interface UserData {
   id: string;
@@ -55,6 +56,7 @@ const initialUsers: UserData[] = [
 
 export default function Users() {
   const { toast } = useToast();
+  const { addAuditLog } = useAudit();
   const [users, setUsers] = useState<UserData[]>(initialUsers);
   const [searchTerm, setSearchTerm] = useState('');
   const [roleFilter, setRoleFilter] = useState('all');
@@ -133,6 +135,9 @@ export default function Users() {
     setIsNewUserOpen(false);
     setNewUser({ name: '', email: '', phone: '', role: 'employee' });
     
+    // Audit log
+    addAuditLog('CREATE', 'USER', user.id, `Criou usuário ${user.name} (${user.role === 'admin' ? 'Admin' : 'Funcionário'})`);
+    
     toast({
       title: "Usuário criado",
       description: `${user.name} foi adicionado com sucesso.`
@@ -144,6 +149,9 @@ export default function Users() {
     
     setUsers(prev => prev.filter(u => u.id !== userToDelete.id));
     setIsDeleteOpen(false);
+    
+    // Audit log
+    addAuditLog('DELETE', 'USER', userToDelete.id, `Removeu usuário ${userToDelete.name}`);
     
     toast({
       title: "Usuário removido",
@@ -182,9 +190,31 @@ export default function Users() {
       .toUpperCase()
       .slice(0, 2);
 
+    // Find original user for change tracking
+    const originalUser = users.find(u => u.id === editUser.id);
+    const changes = [];
+    
+    if (originalUser) {
+      if (originalUser.name !== editUser.name) {
+        changes.push({ field: 'Nome', previousValue: originalUser.name, newValue: editUser.name });
+      }
+      if (originalUser.email !== editUser.email) {
+        changes.push({ field: 'E-mail', previousValue: originalUser.email, newValue: editUser.email });
+      }
+      if (originalUser.role !== editUser.role) {
+        changes.push({ field: 'Perfil', previousValue: originalUser.role === 'admin' ? 'Admin' : 'Funcionário', newValue: editUser.role === 'admin' ? 'Admin' : 'Funcionário' });
+      }
+      if (originalUser.status !== editUser.status) {
+        changes.push({ field: 'Status', previousValue: originalUser.status === 'active' ? 'Ativo' : 'Inativo', newValue: editUser.status === 'active' ? 'Ativo' : 'Inativo' });
+      }
+    }
+
     setUsers(prev => prev.map(u => 
       u.id === editUser.id ? { ...editUser, avatar } : u
     ));
+    
+    // Audit log with changes
+    addAuditLog('UPDATE', 'USER', editUser.id, `Editou usuário ${editUser.name}`, changes.length > 0 ? changes : undefined);
     
     setIsEditOpen(false);
     toast({
