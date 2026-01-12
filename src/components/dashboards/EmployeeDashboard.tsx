@@ -1,4 +1,4 @@
-import { ClipboardCheck, CheckCircle, Clock, XCircle, Plus, Target } from 'lucide-react';
+import { ClipboardCheck, CheckCircle, Clock, XCircle, Plus, Target, Trophy } from 'lucide-react';
 import { StatsCard } from '@/components/StatsCard';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -16,21 +16,44 @@ import {
 import { useAuth } from '@/contexts/AuthContext';
 import { useVehicles } from '@/contexts/VehiclesContext';
 import { useGoals } from '@/contexts/GoalsContext';
+import { useAchievements, EmployeeStats } from '@/contexts/AchievementsContext';
 import { useGoalAchievementAlert } from '@/hooks/useGoalAchievementAlert';
+import { useAchievementCheck } from '@/hooks/useAchievementCheck';
 import { Progress } from '@/components/ui/progress';
+import { AchievementBadge } from '@/components/AchievementBadge';
+import { AchievementsDialog } from '@/components/AchievementsDialog';
+import { achievements } from '@/data/achievements';
 
 export function EmployeeDashboard() {
   const { user } = useAuth();
   const navigate = useNavigate();
   const { inspections, getEmployeeStats, getEmployeeStatsForCurrentMonth } = useVehicles();
   const { goals } = useGoals();
-  const stats = getEmployeeStats(user?.id || '2');
-  const monthlyStats = getEmployeeStatsForCurrentMonth(user?.id || '2');
+  const { getEmployeeAchievements, getTotalPoints, isAchievementUnlocked, getProgress } = useAchievements();
+  
+  const employeeId = user?.id || '2';
+  const stats = getEmployeeStats(employeeId);
+  const monthlyStats = getEmployeeStatsForCurrentMonth(employeeId);
+  
+  // Prepare stats for achievement system
+  const achievementStats: EmployeeStats = {
+    ...stats,
+    approvalRate: stats.total > 0 ? (stats.approved / stats.total) * 100 : 0,
+    currentStreak: 0, // TODO: Calculate actual streak
+    monthlyGoalsMet: monthlyStats.total >= goals.monthly.targetInspections && 
+                     monthlyStats.approvalRate >= goals.monthly.targetApprovalRate,
+  };
   
   // Hook que verifica e dispara alertas de metas atingidas
-  useGoalAchievementAlert(user?.id || '2', monthlyStats);
+  useGoalAchievementAlert(employeeId, monthlyStats);
   
-  const employeeInspections = inspections.filter(i => i.employeeId === (user?.id || '2'));
+  // Hook que verifica e desbloqueia conquistas
+  useAchievementCheck(employeeId, achievementStats);
+  
+  const employeeAchievements = getEmployeeAchievements(employeeId);
+  const totalPoints = getTotalPoints(employeeId);
+  
+  const employeeInspections = inspections.filter(i => i.employeeId === employeeId);
   
   const monthlyGoals = goals.monthly;
   const inspectionsProgress = Math.min((monthlyStats.total / monthlyGoals.targetInspections) * 100, 100);
@@ -96,6 +119,83 @@ export function EmployeeDashboard() {
       </div>
 
       <div className="grid gap-4 sm:gap-6 lg:grid-cols-3">
+        {/* Achievements Card */}
+        <Card className="lg:col-span-1">
+          <CardHeader className="pb-2">
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-base sm:text-lg font-semibold flex items-center gap-2">
+                <Trophy className="h-5 w-5 text-primary" />
+                Minhas Conquistas
+              </CardTitle>
+              <AchievementsDialog employeeId={employeeId} stats={achievementStats} />
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {/* Points Summary */}
+            <div className="flex items-center justify-between p-3 rounded-lg bg-primary/10">
+              <div>
+                <p className="text-2xl font-bold text-primary">{totalPoints}</p>
+                <p className="text-xs text-muted-foreground">Pontos Totais</p>
+              </div>
+              <div className="text-right">
+                <p className="text-lg font-semibold text-foreground">
+                  {employeeAchievements.length}<span className="text-muted-foreground">/{achievements.length}</span>
+                </p>
+                <p className="text-xs text-muted-foreground">Desbloqueadas</p>
+              </div>
+            </div>
+
+            {/* Recent Badges */}
+            <div className="space-y-2">
+              <p className="text-sm font-medium text-muted-foreground">Badges</p>
+              <div className="flex flex-wrap gap-2 justify-center">
+                {achievements.slice(0, 6).map((achievement) => {
+                  const unlocked = isAchievementUnlocked(employeeId, achievement.id);
+                  const progress = getProgress(employeeId, achievement, achievementStats);
+                  return (
+                    <AchievementBadge
+                      key={achievement.id}
+                      achievement={achievement}
+                      unlocked={unlocked}
+                      progress={progress}
+                      size="sm"
+                    />
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Next Achievement */}
+            {(() => {
+              const nextAchievement = achievements.find(
+                a => !isAchievementUnlocked(employeeId, a.id) && 
+                     getProgress(employeeId, a, achievementStats) > 0
+              );
+              if (!nextAchievement) return null;
+              const progress = getProgress(employeeId, nextAchievement, achievementStats);
+              return (
+                <div className="pt-2 border-t space-y-2">
+                  <p className="text-xs font-medium text-muted-foreground">Próxima conquista</p>
+                  <div className="flex items-center gap-2">
+                    <AchievementBadge
+                      achievement={nextAchievement}
+                      unlocked={false}
+                      progress={progress}
+                      size="sm"
+                      showTooltip={false}
+                    />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium truncate">{nextAchievement.name}</p>
+                      <Progress value={progress} className="h-1.5 mt-1" />
+                    </div>
+                    <span className="text-xs text-muted-foreground">{Math.round(progress)}%</span>
+                  </div>
+                </div>
+              );
+            })()}
+          </CardContent>
+        </Card>
+
         {/* Goals Progress Card */}
         <Card className="lg:col-span-1">
           <CardHeader className="pb-2">
