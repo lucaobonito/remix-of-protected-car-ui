@@ -1,13 +1,15 @@
 import { useState, useMemo } from 'react';
 import { AppLayout } from '@/components/AppLayout';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useAudit } from '@/contexts/AuditContext';
 import { AuditTimeline } from '@/components/AuditTimeline';
-import { AuditAction, AuditEntity, AuditFilters } from '@/types/audit';
-import { Search, Download, FileText, Users, Activity, Calendar, Trash2 } from 'lucide-react';
+import { AuditRetentionSettings } from '@/components/AuditRetentionSettings';
+import { ArchivedLogsDialog } from '@/components/ArchivedLogsDialog';
+import { AuditAction, AuditEntity, AuditFilters, ArchivedAuditBatch } from '@/types/audit';
+import { Search, Download, FileText, Users, Activity, Calendar, Trash2, Archive, Eye, Settings2 } from 'lucide-react';
 import { format, subDays, startOfDay, endOfDay, isWithinInterval } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import {
@@ -20,12 +22,21 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from '@/components/ui/collapsible';
 import { useToast } from '@/hooks/use-toast';
 
 export default function AuditLog() {
-  const { logs, clearLogs } = useAudit();
+  const { logs, archivedBatches, clearLogs, deleteArchivedBatch } = useAudit();
   const { toast } = useToast();
   const [isClearOpen, setIsClearOpen] = useState(false);
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [selectedBatch, setSelectedBatch] = useState<ArchivedAuditBatch | null>(null);
+  const [isArchivedDialogOpen, setIsArchivedDialogOpen] = useState(false);
+  const [batchToDelete, setBatchToDelete] = useState<string | null>(null);
   const [filters, setFilters] = useState<AuditFilters>({
     search: '',
     entity: 'all',
@@ -91,15 +102,18 @@ export default function AuditLog() {
     const todayStart = startOfDay(today);
     const todayEnd = endOfDay(today);
 
+    const totalArchived = archivedBatches.reduce((sum, batch) => sum + batch.logsCount, 0);
+
     return {
       total: logs.length,
+      archived: totalArchived,
       today: logs.filter(log => 
         isWithinInterval(new Date(log.timestamp), { start: todayStart, end: todayEnd })
       ).length,
       critical: logs.filter(log => log.action === 'DELETE').length,
       uniqueUsers: new Set(logs.map(log => log.userId)).size,
     };
-  }, [logs]);
+  }, [logs, archivedBatches]);
 
   const handleExport = () => {
     const csvContent = [
@@ -130,7 +144,45 @@ export default function AuditLog() {
     setIsClearOpen(false);
     toast({
       title: "Logs limpos",
-      description: "Todos os registros de auditoria foram removidos."
+      description: "Todos os registros de auditoria ativos foram removidos."
+    });
+  };
+
+  const handleViewBatch = (batch: ArchivedAuditBatch) => {
+    setSelectedBatch(batch);
+    setIsArchivedDialogOpen(true);
+  };
+
+  const handleExportBatch = (batch: ArchivedAuditBatch) => {
+    const csvContent = [
+      ['Data', 'Usuário', 'Ação', 'Entidade', 'Descrição'].join(','),
+      ...batch.logs.map(log => [
+        format(new Date(log.timestamp), 'dd/MM/yyyy HH:mm'),
+        log.userName,
+        log.action,
+        log.entity,
+        `"${log.entityDescription.replace(/"/g, '""')}"`
+      ].join(','))
+    ].join('\n');
+
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = `arquivo_${batch.id}.csv`;
+    link.click();
+
+    toast({
+      title: "Arquivo exportado",
+      description: `${batch.logsCount} registros exportados.`
+    });
+  };
+
+  const handleDeleteBatch = (batchId: string) => {
+    deleteArchivedBatch(batchId);
+    setBatchToDelete(null);
+    toast({
+      title: "Arquivo excluído",
+      description: "O lote de logs arquivados foi removido permanentemente."
     });
   };
 
@@ -142,10 +194,14 @@ export default function AuditLog() {
           <div className="flex items-center gap-2">
             <FileText className="h-5 w-5 text-muted-foreground" />
             <span className="text-muted-foreground">
-              {filteredLogs.length} de {logs.length} registros
+              {filteredLogs.length} de {logs.length} registros ativos
             </span>
           </div>
-          <div className="flex gap-2">
+          <div className="flex gap-2 flex-wrap">
+            <Button variant="outline" onClick={() => setIsSettingsOpen(!isSettingsOpen)}>
+              <Settings2 className="h-4 w-4 mr-2" />
+              Configurações
+            </Button>
             <Button variant="outline" onClick={handleExport} disabled={filteredLogs.length === 0}>
               <Download className="h-4 w-4 mr-2" />
               Exportar CSV
@@ -157,8 +213,15 @@ export default function AuditLog() {
           </div>
         </div>
 
+        {/* Retention Settings (Collapsible) */}
+        <Collapsible open={isSettingsOpen} onOpenChange={setIsSettingsOpen}>
+          <CollapsibleContent className="space-y-4">
+            <AuditRetentionSettings />
+          </CollapsibleContent>
+        </Collapsible>
+
         {/* Stats */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
           <Card>
             <CardContent className="pt-6">
               <div className="flex items-center gap-4">
@@ -167,7 +230,20 @@ export default function AuditLog() {
                 </div>
                 <div>
                   <p className="text-2xl font-bold">{stats.total}</p>
-                  <p className="text-sm text-muted-foreground">Total</p>
+                  <p className="text-sm text-muted-foreground">Ativos</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="pt-6">
+              <div className="flex items-center gap-4">
+                <div className="p-2 rounded-lg bg-amber-500/10">
+                  <Archive className="h-5 w-5 text-amber-500" />
+                </div>
+                <div>
+                  <p className="text-2xl font-bold">{stats.archived}</p>
+                  <p className="text-sm text-muted-foreground">Arquivados</p>
                 </div>
               </div>
             </CardContent>
@@ -212,6 +288,58 @@ export default function AuditLog() {
             </CardContent>
           </Card>
         </div>
+
+        {/* Archived Batches */}
+        {archivedBatches.length > 0 && (
+          <Card>
+            <CardHeader>
+              <div className="flex items-center gap-2">
+                <Archive className="h-5 w-5 text-muted-foreground" />
+                <CardTitle className="text-base">Arquivos</CardTitle>
+              </div>
+              <CardDescription>
+                {archivedBatches.length} lote(s) de logs arquivados
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-3">
+                {archivedBatches.map((batch) => (
+                  <div 
+                    key={batch.id} 
+                    className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 rounded-lg border bg-muted/30"
+                  >
+                    <div className="space-y-1">
+                      <p className="font-medium">
+                        Arquivado em {format(new Date(batch.archivedAt), "dd 'de' MMMM 'de' yyyy", { locale: ptBR })}
+                      </p>
+                      <p className="text-sm text-muted-foreground">
+                        {batch.logsCount} registros • {format(new Date(batch.dateFrom), 'dd/MM/yyyy')} - {format(new Date(batch.dateTo), 'dd/MM/yyyy')}
+                      </p>
+                    </div>
+                    <div className="flex gap-2">
+                      <Button variant="outline" size="sm" onClick={() => handleViewBatch(batch)}>
+                        <Eye className="h-4 w-4 mr-1" />
+                        Ver
+                      </Button>
+                      <Button variant="outline" size="sm" onClick={() => handleExportBatch(batch)}>
+                        <Download className="h-4 w-4 mr-1" />
+                        Baixar
+                      </Button>
+                      <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        className="text-destructive hover:text-destructive"
+                        onClick={() => setBatchToDelete(batch.id)}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Filters */}
         <Card>
@@ -287,14 +415,21 @@ export default function AuditLog() {
         </Card>
       </div>
 
+      {/* Archived Logs Dialog */}
+      <ArchivedLogsDialog 
+        batch={selectedBatch}
+        open={isArchivedDialogOpen}
+        onOpenChange={setIsArchivedDialogOpen}
+      />
+
       {/* Clear Logs Confirmation */}
       <AlertDialog open={isClearOpen} onOpenChange={setIsClearOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Limpar Logs de Auditoria</AlertDialogTitle>
             <AlertDialogDescription>
-              Tem certeza que deseja remover todos os {logs.length} registros de auditoria? 
-              Esta ação não pode ser desfeita.
+              Tem certeza que deseja remover todos os {logs.length} registros de auditoria ativos? 
+              Esta ação não pode ser desfeita. Os logs arquivados não serão afetados.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -304,6 +439,28 @@ export default function AuditLog() {
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
               Limpar Tudo
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Delete Batch Confirmation */}
+      <AlertDialog open={!!batchToDelete} onOpenChange={(open) => !open && setBatchToDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir Arquivo</AlertDialogTitle>
+            <AlertDialogDescription>
+              Tem certeza que deseja excluir este lote de logs arquivados? 
+              Esta ação não pode ser desfeita.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={() => batchToDelete && handleDeleteBatch(batchToDelete)} 
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Excluir
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
