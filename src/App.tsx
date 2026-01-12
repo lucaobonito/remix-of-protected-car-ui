@@ -14,6 +14,7 @@ import Inspections from "./pages/Inspections";
 import NewInspection from "./pages/NewInspection";
 import Kanban from "./pages/Kanban";
 import Reports from "./pages/Reports";
+import Rankings from "./pages/Rankings";
 import Users from "./pages/Users";
 import Settings from "./pages/Settings";
 import NotFound from "./pages/NotFound";
@@ -39,6 +40,7 @@ const App = () => (
                   <Route path="/new-inspection" element={<NewInspection />} />
                   <Route path="/kanban" element={<Kanban />} />
                   <Route path="/reports" element={<Reports />} />
+                  <Route path="/rankings" element={<Rankings />} />
                   <Route path="/users" element={<Users />} />
                   <Route path="/settings" element={<Settings />} />
                   <Route path="*" element={<NotFound />} />
