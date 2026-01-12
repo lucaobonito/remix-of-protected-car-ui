@@ -1,4 +1,4 @@
-import { ClipboardCheck, CheckCircle, Clock, XCircle, Plus } from 'lucide-react';
+import { ClipboardCheck, CheckCircle, Clock, XCircle, Plus, Target } from 'lucide-react';
 import { StatsCard } from '@/components/StatsCard';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -15,14 +15,26 @@ import {
 } from 'recharts';
 import { useAuth } from '@/contexts/AuthContext';
 import { useVehicles } from '@/contexts/VehiclesContext';
+import { useGoals } from '@/contexts/GoalsContext';
+import { useGoalAchievementAlert } from '@/hooks/useGoalAchievementAlert';
+import { Progress } from '@/components/ui/progress';
 
 export function EmployeeDashboard() {
   const { user } = useAuth();
   const navigate = useNavigate();
-  const { inspections, getEmployeeStats } = useVehicles();
+  const { inspections, getEmployeeStats, getEmployeeStatsForCurrentMonth } = useVehicles();
+  const { goals } = useGoals();
   const stats = getEmployeeStats(user?.id || '2');
+  const monthlyStats = getEmployeeStatsForCurrentMonth(user?.id || '2');
+  
+  // Hook que verifica e dispara alertas de metas atingidas
+  useGoalAchievementAlert(user?.id || '2', monthlyStats);
   
   const employeeInspections = inspections.filter(i => i.employeeId === (user?.id || '2'));
+  
+  const monthlyGoals = goals.monthly;
+  const inspectionsProgress = Math.min((monthlyStats.total / monthlyGoals.targetInspections) * 100, 100);
+  const approvalProgress = Math.min((monthlyStats.approvalRate / monthlyGoals.targetApprovalRate) * 100, 100);
 
   const chartData = [
     { name: 'Aprovadas', value: stats.approved, fill: 'hsl(var(--success))' },
@@ -83,9 +95,75 @@ export function EmployeeDashboard() {
         />
       </div>
 
-      <div className="grid gap-4 sm:gap-6 lg:grid-cols-2">
+      <div className="grid gap-4 sm:gap-6 lg:grid-cols-3">
+        {/* Goals Progress Card */}
+        <Card className="lg:col-span-1">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base sm:text-lg font-semibold flex items-center gap-2">
+              <Target className="h-5 w-5 text-primary" />
+              Progresso das Metas
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {/* Inspections Progress */}
+            <div className="space-y-2">
+              <div className="flex justify-between text-sm">
+                <span className="text-muted-foreground">Vistorias</span>
+                <span className="font-medium">
+                  {monthlyStats.total}/{monthlyGoals.targetInspections}
+                </span>
+              </div>
+              <Progress value={inspectionsProgress} className="h-2" />
+              <div className="flex justify-between text-xs text-muted-foreground">
+                <span className={monthlyStats.total >= monthlyGoals.minInspections ? 'text-success' : ''}>
+                  Mín: {monthlyGoals.minInspections} {monthlyStats.total >= monthlyGoals.minInspections && '✓'}
+                </span>
+                <span className={monthlyStats.total >= monthlyGoals.targetInspections ? 'text-success' : ''}>
+                  Alvo: {monthlyGoals.targetInspections} {monthlyStats.total >= monthlyGoals.targetInspections && '✓'}
+                </span>
+              </div>
+            </div>
+
+            {/* Approval Rate Progress */}
+            <div className="space-y-2">
+              <div className="flex justify-between text-sm">
+                <span className="text-muted-foreground">Taxa de Aprovação</span>
+                <span className="font-medium">
+                  {monthlyStats.approvalRate.toFixed(0)}%
+                </span>
+              </div>
+              <Progress value={approvalProgress} className="h-2" />
+              <div className="flex justify-between text-xs text-muted-foreground">
+                <span className={monthlyStats.approvalRate >= monthlyGoals.minApprovalRate ? 'text-success' : ''}>
+                  Mín: {monthlyGoals.minApprovalRate}% {monthlyStats.approvalRate >= monthlyGoals.minApprovalRate && '✓'}
+                </span>
+                <span className={monthlyStats.approvalRate >= monthlyGoals.targetApprovalRate ? 'text-success' : ''}>
+                  Alvo: {monthlyGoals.targetApprovalRate}% {monthlyStats.approvalRate >= monthlyGoals.targetApprovalRate && '✓'}
+                </span>
+              </div>
+            </div>
+
+            {/* Achievement Status */}
+            <div className="pt-2 border-t">
+              {monthlyStats.total >= monthlyGoals.targetInspections && monthlyStats.approvalRate >= monthlyGoals.targetApprovalRate ? (
+                <Badge variant="success" className="w-full justify-center py-1">
+                  🏆 Todas as metas atingidas!
+                </Badge>
+              ) : monthlyStats.total >= monthlyGoals.minInspections && monthlyStats.approvalRate >= monthlyGoals.minApprovalRate ? (
+                <Badge variant="pending" className="w-full justify-center py-1">
+                  🎯 Metas mínimas atingidas
+                </Badge>
+              ) : (
+                <Badge variant="muted" className="w-full justify-center py-1">
+                  Continue trabalhando nas metas
+                </Badge>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+
         {/* Performance Chart */}
-        <Card>
+        <Card className="lg:col-span-2">
           <CardHeader className="pb-2">
             <CardTitle className="text-base sm:text-lg font-semibold">Meu Desempenho</CardTitle>
           </CardHeader>
@@ -120,43 +198,47 @@ export function EmployeeDashboard() {
             </div>
           </CardContent>
         </Card>
+      </div>
 
+      <div className="grid gap-4 sm:gap-6 lg:grid-cols-3">
         {/* Quick Stats */}
-        <Card>
+        <Card className="lg:col-span-3">
           <CardHeader className="pb-2">
             <CardTitle className="text-base sm:text-lg font-semibold">Resumo do Mês</CardTitle>
           </CardHeader>
-          <CardContent className="space-y-3 sm:space-y-4">
-            <div className="flex items-center justify-between p-3 sm:p-4 rounded-lg bg-success/10">
-              <div className="flex items-center gap-2 sm:gap-3">
-                <CheckCircle className="h-6 w-6 sm:h-8 sm:w-8 text-success" />
-                <div>
-                  <p className="text-xs sm:text-sm text-muted-foreground">Taxa de Aprovação</p>
-                  <p className="text-xl sm:text-2xl font-bold text-foreground">
-                    {stats.total > 0 ? Math.round((stats.approved / stats.total) * 100) : 0}%
-                  </p>
+          <CardContent>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
+              <div className="flex items-center justify-between p-3 sm:p-4 rounded-lg bg-success/10">
+                <div className="flex items-center gap-2 sm:gap-3">
+                  <CheckCircle className="h-6 w-6 sm:h-8 sm:w-8 text-success" />
+                  <div>
+                    <p className="text-xs sm:text-sm text-muted-foreground">Taxa de Aprovação</p>
+                    <p className="text-xl sm:text-2xl font-bold text-foreground">
+                      {monthlyStats.approvalRate.toFixed(0)}%
+                    </p>
+                  </div>
                 </div>
               </div>
-            </div>
-            
-            <div className="flex items-center justify-between p-3 sm:p-4 rounded-lg bg-primary/10">
-              <div className="flex items-center gap-2 sm:gap-3">
-                <ClipboardCheck className="h-6 w-6 sm:h-8 sm:w-8 text-primary" />
-                <div>
-                  <p className="text-xs sm:text-sm text-muted-foreground">Média Semanal</p>
-                  <p className="text-xl sm:text-2xl font-bold text-foreground">
-                    {Math.round(stats.total / 4)} <span className="text-sm font-normal hidden sm:inline">vistorias</span>
-                  </p>
+              
+              <div className="flex items-center justify-between p-3 sm:p-4 rounded-lg bg-primary/10">
+                <div className="flex items-center gap-2 sm:gap-3">
+                  <ClipboardCheck className="h-6 w-6 sm:h-8 sm:w-8 text-primary" />
+                  <div>
+                    <p className="text-xs sm:text-sm text-muted-foreground">Vistorias do Mês</p>
+                    <p className="text-xl sm:text-2xl font-bold text-foreground">
+                      {monthlyStats.total} <span className="text-sm font-normal hidden sm:inline">vistorias</span>
+                    </p>
+                  </div>
                 </div>
               </div>
-            </div>
 
-            <div className="flex items-center justify-between p-3 sm:p-4 rounded-lg bg-warning/10">
-              <div className="flex items-center gap-2 sm:gap-3">
-                <Clock className="h-6 w-6 sm:h-8 sm:w-8 text-warning" />
-                <div>
-                  <p className="text-xs sm:text-sm text-muted-foreground">Aguardando Ação</p>
-                  <p className="text-xl sm:text-2xl font-bold text-foreground">{stats.pending}</p>
+              <div className="flex items-center justify-between p-3 sm:p-4 rounded-lg bg-warning/10">
+                <div className="flex items-center gap-2 sm:gap-3">
+                  <Clock className="h-6 w-6 sm:h-8 sm:w-8 text-warning" />
+                  <div>
+                    <p className="text-xs sm:text-sm text-muted-foreground">Aguardando Ação</p>
+                    <p className="text-xl sm:text-2xl font-bold text-foreground">{stats.pending}</p>
+                  </div>
                 </div>
               </div>
             </div>
