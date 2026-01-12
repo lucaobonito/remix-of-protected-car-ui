@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { Download, TrendingUp, TrendingDown, DollarSign, Car, ClipboardCheck, Users, Loader2, FileSpreadsheet, CalendarDays, User, Trophy, Medal, Target, Award, Star } from 'lucide-react';
+import { Download, TrendingUp, TrendingDown, DollarSign, Car, ClipboardCheck, Users, Loader2, FileSpreadsheet, CalendarDays, User, Trophy, Medal, Target, Award, Star, AlertTriangle, CheckCircle2, TrendingDown as TrendingDownIcon } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import {
   AreaChart,
@@ -21,7 +21,8 @@ import {
   ResponsiveContainer,
   Legend,
 } from 'recharts';
-import { mockMonthlyStats, mockInspections, mockVehicles } from '@/data/mockData';
+import { mockMonthlyStats, mockInspections, mockVehicles, Inspection } from '@/data/mockData';
+import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
@@ -200,6 +201,100 @@ export default function Reports() {
       }))
       .sort((a, b) => b.score - a.score);
   }, [employeePerformanceData, goals]);
+
+  // ========== SISTEMA DE RANKING DE VISTORIAS ==========
+
+  // Função para calcular pontuação de cada vistoria
+  const calculateInspectionScore = (inspection: Inspection) => {
+    let score = 0;
+    
+    // 1. Status (máx 40 pontos)
+    if (inspection.status === 'approved') score += 40;
+    else if (inspection.status === 'in_progress') score += 20;
+    else if (inspection.status === 'pending') score += 10;
+    // rejected = 0 pontos
+    
+    // 2. Checklist completo (máx 60 pontos - 10 por item)
+    const checklistItems = ['exterior', 'interior', 'engine', 'tires', 'documents', 'lights'] as const;
+    checklistItems.forEach(item => {
+      if (inspection.checklist[item]) score += 10;
+    });
+    
+    return score; // Máximo: 100 pontos
+  };
+
+  // Definir rating baseado na pontuação
+  const getQualityInfo = (score: number) => {
+    if (score >= 90) return { rating: 5, label: 'Excelente', color: 'text-success' };
+    if (score >= 70) return { rating: 4, label: 'Bom', color: 'text-lime-500' };
+    if (score >= 50) return { rating: 3, label: 'Regular', color: 'text-warning' };
+    if (score >= 30) return { rating: 2, label: 'Ruim', color: 'text-orange-500' };
+    return { rating: 1, label: 'Crítico', color: 'text-destructive' };
+  };
+
+  // Ranking de vistorias
+  const inspectionRanking = useMemo(() => {
+    return filteredInspections
+      .map(inspection => {
+        const score = calculateInspectionScore(inspection);
+        const checklistComplete = Object.values(inspection.checklist).filter(Boolean).length;
+        const qualityInfo = getQualityInfo(score);
+        
+        return {
+          ...inspection,
+          score,
+          checklistComplete,
+          checklistTotal: 6,
+          ...qualityInfo,
+        };
+      })
+      .sort((a, b) => b.score - a.score);
+  }, [filteredInspections]);
+
+  // Estatísticas do ranking
+  const rankingStats = useMemo(() => {
+    if (inspectionRanking.length === 0) {
+      return { averageScore: 0, excellent: 0, good: 0, regular: 0, bad: 0, critical: 0, maxScore: 0 };
+    }
+    
+    const averageScore = Math.round(
+      inspectionRanking.reduce((acc, i) => acc + i.score, 0) / inspectionRanking.length
+    );
+    
+    return {
+      averageScore,
+      excellent: inspectionRanking.filter(i => i.rating === 5).length,
+      good: inspectionRanking.filter(i => i.rating === 4).length,
+      regular: inspectionRanking.filter(i => i.rating === 3).length,
+      bad: inspectionRanking.filter(i => i.rating === 2).length,
+      critical: inspectionRanking.filter(i => i.rating === 1).length,
+      maxScore: inspectionRanking.filter(i => i.score === 100).length,
+    };
+  }, [inspectionRanking]);
+
+  // Distribuição de qualidade para gráfico
+  const qualityDistribution = useMemo(() => [
+    { name: 'Excelente', value: rankingStats.excellent, fill: 'hsl(var(--success))' },
+    { name: 'Bom', value: rankingStats.good, fill: 'hsl(142 71% 45%)' },
+    { name: 'Regular', value: rankingStats.regular, fill: 'hsl(var(--warning))' },
+    { name: 'Ruim', value: rankingStats.bad, fill: 'hsl(25 95% 53%)' },
+    { name: 'Crítico', value: rankingStats.critical, fill: 'hsl(var(--destructive))' },
+  ], [rankingStats]);
+
+  // Componente de estrelas
+  const RatingStars = ({ rating }: { rating: number }) => (
+    <div className="flex gap-0.5">
+      {[1, 2, 3, 4, 5].map((star) => (
+        <Star
+          key={star}
+          className={cn(
+            "h-4 w-4",
+            star <= rating ? "fill-amber-400 text-amber-400" : "text-muted-foreground/30"
+          )}
+        />
+      ))}
+    </div>
+  );
 
   // Label do período selecionado
   const getPeriodLabel = () => {
@@ -451,6 +546,31 @@ export default function Reports() {
         })
       ];
 
+      // ===== ABA 7: RANKING DE VISTORIAS =====
+      const rankingVistoriasData: (string | number | undefined)[][] = [
+        [`RANKING DE VISTORIAS - ${selectedYear} - ${getPeriodLabel()}`],
+        [],
+        ['Posição', 'Placa', 'Veículo', 'Vistoriador', 'Data', 'Pontuação', 'Classificação', 'Checklist'],
+        ...inspectionRanking.map((insp, idx) => [
+          idx + 1,
+          insp.vehicle.plate,
+          insp.vehicle.brand + ' ' + insp.vehicle.model,
+          insp.employeeName,
+          formatDate(insp.date),
+          insp.score + '/100',
+          insp.label,
+          insp.checklistComplete + '/' + insp.checklistTotal
+        ]),
+        [],
+        ['RESUMO DE QUALIDADE', '', '', '', '', '', '', ''],
+        ['Média de Pontuação', rankingStats.averageScore + '/100', '', '', '', '', '', ''],
+        ['Vistorias Excelentes (90+)', rankingStats.excellent, '', '', '', '', '', ''],
+        ['Vistorias Boas (70-89)', rankingStats.good, '', '', '', '', '', ''],
+        ['Vistorias Regulares (50-69)', rankingStats.regular, '', '', '', '', '', ''],
+        ['Vistorias Ruins (30-49)', rankingStats.bad, '', '', '', '', '', ''],
+        ['Vistorias Críticas (0-29)', rankingStats.critical, '', '', '', '', '', ''],
+      ];
+
       // Criar abas com largura de colunas otimizada
       XLSX.utils.book_append_sheet(wb, createSheet(resumoData, [25, 22, 32]), 'Resumo');
       XLSX.utils.book_append_sheet(wb, createSheet(mensalData, [10, 12, 10, 12, 10, 18, 18, 12]), 'Mensal');
@@ -458,6 +578,7 @@ export default function Reports() {
       XLSX.utils.book_append_sheet(wb, createSheet(veiculosData, [12, 15, 18, 8, 12, 22, 14, 15]), 'Veículos');
       XLSX.utils.book_append_sheet(wb, createSheet(checklistData, [20, 15, 15, 20]), 'Checklist');
       XLSX.utils.book_append_sheet(wb, createSheet(vistoriadoresData, [25, 10, 12, 12, 12, 18]), 'Vistoriadores');
+      XLSX.utils.book_append_sheet(wb, createSheet(rankingVistoriasData, [10, 12, 22, 20, 12, 12, 14, 10]), 'Ranking Vistorias');
 
       const periodLabel = selectedPeriod === 'all' ? 'completo' : selectedPeriod;
       const employeeName = selectedEmployee !== 'all' 
@@ -467,7 +588,7 @@ export default function Reports() {
       
       toast({
         title: "Excel exportado com sucesso!",
-        description: `Relatório de ${selectedYear} - ${getPeriodLabel()} com 6 abas detalhadas.`
+        description: `Relatório de ${selectedYear} - ${getPeriodLabel()} com 7 abas detalhadas.`
       });
     } catch (error) {
       toast({
@@ -991,6 +1112,235 @@ export default function Reports() {
               </div>
             </CardContent>
           </Card>
+        )}
+
+        {/* ========== RANKING DE VISTORIAS ========== */}
+        {inspectionRanking.length > 0 && (
+          <>
+            {/* Cards de Estatísticas do Ranking */}
+            <div className="grid gap-4 md:grid-cols-3">
+              <Card className="bg-gradient-to-br from-primary/10 to-primary/5">
+                <CardContent className="pt-6">
+                  <div className="flex items-start justify-between">
+                    <div>
+                      <p className="text-sm text-muted-foreground">Pontuação Média</p>
+                      <p className="text-3xl font-bold text-foreground">
+                        {rankingStats.averageScore}<span className="text-lg text-muted-foreground">/100</span>
+                      </p>
+                      <p className="text-sm text-muted-foreground mt-1">
+                        {inspectionRanking.length} vistorias analisadas
+                      </p>
+                    </div>
+                    <ClipboardCheck className="h-8 w-8 text-primary" />
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card className="bg-gradient-to-br from-success/10 to-success/5">
+                <CardContent className="pt-6">
+                  <div className="flex items-start justify-between">
+                    <div>
+                      <p className="text-sm text-muted-foreground">Top Performers</p>
+                      <p className="text-3xl font-bold text-foreground">{rankingStats.excellent + rankingStats.good}</p>
+                      <p className="text-sm text-success mt-1">
+                        Vistorias Excelentes/Boas
+                      </p>
+                    </div>
+                    <CheckCircle2 className="h-8 w-8 text-success" />
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card className="bg-gradient-to-br from-destructive/10 to-destructive/5">
+                <CardContent className="pt-6">
+                  <div className="flex items-start justify-between">
+                    <div>
+                      <p className="text-sm text-muted-foreground">Precisam Atenção</p>
+                      <p className="text-3xl font-bold text-foreground">{rankingStats.bad + rankingStats.critical}</p>
+                      <p className="text-sm text-destructive mt-1">
+                        Vistorias Ruins/Críticas
+                      </p>
+                    </div>
+                    <AlertTriangle className="h-8 w-8 text-destructive" />
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Top 5 e Atenção */}
+            <div className="grid gap-6 lg:grid-cols-2">
+              {/* Top 5 Melhores */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Trophy className="h-5 w-5 text-amber-500" />
+                    Top 5 Melhores Vistorias
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-3">
+                    {inspectionRanking.slice(0, 5).map((insp, index) => (
+                      <div 
+                        key={insp.id}
+                        className={cn(
+                          "flex items-center gap-4 p-3 rounded-lg border",
+                          index === 0 && "bg-gradient-to-r from-amber-500/10 to-amber-500/5 border-amber-500/30",
+                          index === 1 && "bg-gradient-to-r from-slate-400/10 to-slate-400/5 border-slate-400/30",
+                          index === 2 && "bg-gradient-to-r from-orange-600/10 to-orange-600/5 border-orange-600/30",
+                          index > 2 && "bg-muted/30"
+                        )}
+                      >
+                        <div className="flex-shrink-0 w-10 h-10 flex items-center justify-center">
+                          {index === 0 ? (
+                            <Trophy className="h-6 w-6 text-amber-500" />
+                          ) : index === 1 ? (
+                            <Medal className="h-6 w-6 text-slate-400" />
+                          ) : index === 2 ? (
+                            <Medal className="h-6 w-6 text-orange-600" />
+                          ) : (
+                            <span className="text-xl font-bold text-muted-foreground">#{index + 1}</span>
+                          )}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2">
+                            <p className="font-semibold truncate">{insp.vehicle.plate}</p>
+                            <Badge variant="outline" className="text-xs">
+                              {insp.vehicle.brand} {insp.vehicle.model}
+                            </Badge>
+                          </div>
+                          <div className="flex items-center gap-3 mt-1 text-sm text-muted-foreground">
+                            <span>{insp.employeeName}</span>
+                            <span>•</span>
+                            <span>{new Date(insp.date).toLocaleDateString('pt-BR')}</span>
+                          </div>
+                        </div>
+                        <div className="flex-shrink-0 text-right">
+                          <p className="font-bold text-lg">{insp.score}<span className="text-sm text-muted-foreground">/100</span></p>
+                          <RatingStars rating={insp.rating} />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Precisam de Atenção */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <AlertTriangle className="h-5 w-5 text-destructive" />
+                    Vistorias que Precisam de Atenção
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-3">
+                    {inspectionRanking
+                      .filter(i => i.rating <= 2)
+                      .slice(0, 5)
+                      .map((insp) => {
+                        const missingItems = Object.entries(insp.checklist)
+                          .filter(([_, value]) => !value)
+                          .map(([key]) => translateChecklistItem(key));
+                        
+                        return (
+                          <div 
+                            key={insp.id}
+                            className="flex items-center gap-4 p-3 rounded-lg border border-destructive/20 bg-destructive/5"
+                          >
+                            <div className="flex-shrink-0 w-10 h-10 flex items-center justify-center rounded-full bg-destructive/10">
+                              <AlertTriangle className="h-5 w-5 text-destructive" />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2">
+                                <p className="font-semibold truncate">{insp.vehicle.plate}</p>
+                                <Badge variant="destructive" className="text-xs">
+                                  {insp.label}
+                                </Badge>
+                              </div>
+                              <p className="text-sm text-muted-foreground mt-1">
+                                {missingItems.length > 0 
+                                  ? `Faltam: ${missingItems.join(', ')}`
+                                  : `Status: ${translateStatus(insp.status)}`
+                                }
+                              </p>
+                            </div>
+                            <div className="flex-shrink-0 text-right">
+                              <p className="font-bold text-lg text-destructive">{insp.score}<span className="text-sm">/100</span></p>
+                              <RatingStars rating={insp.rating} />
+                            </div>
+                          </div>
+                        );
+                      })}
+                    {inspectionRanking.filter(i => i.rating <= 2).length === 0 && (
+                      <div className="text-center py-8 text-muted-foreground">
+                        <CheckCircle2 className="h-12 w-12 mx-auto mb-2 text-success" />
+                        <p>Nenhuma vistoria crítica neste período!</p>
+                      </div>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Gráfico de Distribuição de Qualidade */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Star className="h-5 w-5 text-amber-400" />
+                  Distribuição de Qualidade das Vistorias
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <ResponsiveContainer width="100%" height={300}>
+                  <BarChart data={qualityDistribution} layout="vertical">
+                    <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
+                    <XAxis type="number" tick={{ fill: 'hsl(var(--muted-foreground))' }} />
+                    <YAxis 
+                      dataKey="name" 
+                      type="category" 
+                      tick={{ fill: 'hsl(var(--muted-foreground))' }} 
+                      width={80}
+                    />
+                    <Tooltip
+                      contentStyle={{
+                        backgroundColor: 'hsl(var(--card))',
+                        border: '1px solid hsl(var(--border))',
+                        borderRadius: '8px',
+                      }}
+                      formatter={(value: number) => [`${value} vistorias`, 'Quantidade']}
+                    />
+                    <Bar 
+                      dataKey="value" 
+                      radius={[0, 4, 4, 0]}
+                    >
+                      {qualityDistribution.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={entry.fill} />
+                      ))}
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+
+                {/* Legenda de classificação */}
+                <div className="mt-4 pt-4 border-t border-border">
+                  <p className="text-sm font-medium text-foreground mb-2">Critérios de Pontuação</p>
+                  <div className="grid grid-cols-2 md:grid-cols-3 gap-3 text-xs">
+                    <div className="flex items-center gap-2">
+                      <Star className="h-4 w-4 fill-amber-400 text-amber-400" />
+                      <span className="text-muted-foreground">Status aprovado: 40 pts</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Star className="h-4 w-4 fill-amber-400 text-amber-400" />
+                      <span className="text-muted-foreground">Cada item checklist: 10 pts</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Star className="h-4 w-4 fill-amber-400 text-amber-400" />
+                      <span className="text-muted-foreground">Pontuação máxima: 100 pts</span>
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </>
         )}
         </div>
       </div>
