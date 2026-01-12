@@ -5,13 +5,61 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Search, Car, Plus, Eye, Shield, AlertCircle, Clock } from 'lucide-react';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Separator } from '@/components/ui/separator';
+import { Search, Car, Plus, Eye, Shield, AlertCircle, Clock, Calendar, Palette, User, CheckCircle, XCircle, Loader2 } from 'lucide-react';
 import { useVehicles } from '@/contexts/VehiclesContext';
+import { Vehicle } from '@/data/mockData';
 
 export default function Vehicles() {
-  const { vehicles } = useVehicles();
+  const { vehicles, inspections } = useVehicles();
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
+  const [selectedVehicle, setSelectedVehicle] = useState<Vehicle | null>(null);
+  const [isDetailsOpen, setIsDetailsOpen] = useState(false);
+
+  const handleViewDetails = (vehicle: Vehicle) => {
+    setSelectedVehicle(vehicle);
+    setIsDetailsOpen(true);
+  };
+
+  const getVehicleInspections = (vehicleId: string) => {
+    return inspections.filter(i => i.vehicleId === vehicleId);
+  };
+
+  const formatDate = (dateStr: string) => {
+    return new Date(dateStr).toLocaleDateString('pt-BR');
+  };
+
+  const getInspectionStatusBadge = (status: string) => {
+    switch (status) {
+      case 'approved':
+        return <Badge variant="success">Aprovada</Badge>;
+      case 'pending':
+        return <Badge variant="warning">Pendente</Badge>;
+      case 'in_progress':
+        return <Badge variant="outline" className="border-blue-500 text-blue-500">Em Andamento</Badge>;
+      case 'rejected':
+        return <Badge variant="destructive">Rejeitada</Badge>;
+      default:
+        return <Badge variant="muted">{status}</Badge>;
+    }
+  };
+
+  const getInspectionStatusIcon = (status: string) => {
+    switch (status) {
+      case 'approved':
+        return <CheckCircle className="h-4 w-4 text-success" />;
+      case 'pending':
+        return <Clock className="h-4 w-4 text-warning" />;
+      case 'in_progress':
+        return <Loader2 className="h-4 w-4 text-blue-500" />;
+      case 'rejected':
+        return <XCircle className="h-4 w-4 text-destructive" />;
+      default:
+        return <Clock className="h-4 w-4" />;
+    }
+  };
 
   const filteredVehicles = vehicles.filter(vehicle => {
     const matchesSearch = 
@@ -161,7 +209,12 @@ export default function Vehicles() {
                   </div>
 
                   <div className="flex gap-2 pt-2">
-                    <Button variant="outline" size="sm" className="flex-1 gap-2">
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      className="flex-1 gap-2"
+                      onClick={() => handleViewDetails(vehicle)}
+                    >
                       <Eye className="h-4 w-4" />
                       Ver Detalhes
                     </Button>
@@ -186,6 +239,129 @@ export default function Vehicles() {
             </Card>
           )}
         </div>
+
+        {/* Vehicle Details Dialog */}
+        <Dialog open={isDetailsOpen} onOpenChange={setIsDetailsOpen}>
+          <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
+            {selectedVehicle && (
+              <>
+                <DialogHeader>
+                  <div className="flex items-center gap-3">
+                    <Car className="h-6 w-6 text-primary" />
+                    <DialogTitle className="text-xl">
+                      Placa: {selectedVehicle.plate}
+                    </DialogTitle>
+                  </div>
+                  <DialogDescription>
+                    Informações detalhadas do veículo
+                  </DialogDescription>
+                </DialogHeader>
+
+                <div className="space-y-6">
+                  {/* Status Badge */}
+                  <div className="flex items-center gap-2">
+                    {getStatusIcon(selectedVehicle.status)}
+                    {getStatusBadge(selectedVehicle.status)}
+                  </div>
+
+                  <Separator />
+
+                  {/* Vehicle Information */}
+                  <div>
+                    <h4 className="font-semibold text-foreground mb-4">Informações do Veículo</h4>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="flex items-start gap-3 p-3 rounded-lg bg-muted/50">
+                        <Car className="h-5 w-5 text-muted-foreground mt-0.5" />
+                        <div>
+                          <p className="text-sm text-muted-foreground">Veículo</p>
+                          <p className="font-medium">{selectedVehicle.brand} {selectedVehicle.model}</p>
+                        </div>
+                      </div>
+                      <div className="flex items-start gap-3 p-3 rounded-lg bg-muted/50">
+                        <Calendar className="h-5 w-5 text-muted-foreground mt-0.5" />
+                        <div>
+                          <p className="text-sm text-muted-foreground">Ano</p>
+                          <p className="font-medium">{selectedVehicle.year}</p>
+                        </div>
+                      </div>
+                      <div className="flex items-start gap-3 p-3 rounded-lg bg-muted/50">
+                        <Palette className="h-5 w-5 text-muted-foreground mt-0.5" />
+                        <div>
+                          <p className="text-sm text-muted-foreground">Cor</p>
+                          <p className="font-medium">{selectedVehicle.color}</p>
+                        </div>
+                      </div>
+                      <div className="flex items-start gap-3 p-3 rounded-lg bg-muted/50">
+                        <Calendar className="h-5 w-5 text-muted-foreground mt-0.5" />
+                        <div>
+                          <p className="text-sm text-muted-foreground">Data de Cadastro</p>
+                          <p className="font-medium">{formatDate(selectedVehicle.createdAt)}</p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <Separator />
+
+                  {/* Owner Information */}
+                  <div>
+                    <h4 className="font-semibold text-foreground mb-4">Proprietário</h4>
+                    <div className="flex items-start gap-3 p-3 rounded-lg bg-muted/50">
+                      <User className="h-5 w-5 text-muted-foreground mt-0.5" />
+                      <div>
+                        <p className="text-sm text-muted-foreground">Nome</p>
+                        <p className="font-medium">{selectedVehicle.ownerName}</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <Separator />
+
+                  {/* Inspections History */}
+                  <div>
+                    <h4 className="font-semibold text-foreground mb-4">
+                      Histórico de Vistorias ({getVehicleInspections(selectedVehicle.id).length})
+                    </h4>
+                    {getVehicleInspections(selectedVehicle.id).length > 0 ? (
+                      <div className="space-y-3">
+                        {getVehicleInspections(selectedVehicle.id)
+                          .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+                          .map((inspection) => (
+                            <div 
+                              key={inspection.id} 
+                              className="flex items-center justify-between p-3 rounded-lg bg-muted/50 border border-border"
+                            >
+                              <div className="flex items-center gap-3">
+                                {getInspectionStatusIcon(inspection.status)}
+                                <div>
+                                  <p className="font-medium">{formatDate(inspection.date)}</p>
+                                  <p className="text-sm text-muted-foreground">
+                                    Vistoriador: {inspection.employeeName}
+                                  </p>
+                                </div>
+                              </div>
+                              {getInspectionStatusBadge(inspection.status)}
+                            </div>
+                          ))}
+                      </div>
+                    ) : (
+                      <div className="text-center py-6 text-muted-foreground">
+                        <Clock className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                        <p>Nenhuma vistoria realizada</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                <div className="flex justify-end pt-4">
+                  <Button variant="outline" onClick={() => setIsDetailsOpen(false)}>
+                    Fechar
+                  </Button>
+                </div>
+              </>
+            )}
+          </DialogContent>
+        </Dialog>
       </div>
     </AppLayout>
   );
