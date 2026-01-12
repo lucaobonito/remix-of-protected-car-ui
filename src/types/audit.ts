@@ -41,3 +41,18 @@ export interface AuditFilters {
   dateFrom: string;
   dateTo: string;
 }
+
+export interface AuditRetentionConfig {
+  retentionDays: number;
+  archiveEnabled: boolean;
+  autoDeleteArchiveAfterDays: number;
+}
+
+export interface ArchivedAuditBatch {
+  id: string;
+  archivedAt: string;
+  dateFrom: string;
+  dateTo: string;
+  logsCount: number;
+  logs: AuditLogEntry[];
+}
