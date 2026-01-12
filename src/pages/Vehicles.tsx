@@ -4,23 +4,99 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Separator } from '@/components/ui/separator';
-import { Search, Car, Plus, Eye, Shield, AlertCircle, Clock, Calendar, Palette, User, CheckCircle, XCircle, Loader2 } from 'lucide-react';
-import { useVehicles } from '@/contexts/VehiclesContext';
+import { Search, Car, Plus, Eye, Shield, AlertCircle, Clock, Calendar, Palette, User, CheckCircle, XCircle, Loader2, Pencil, Save, X } from 'lucide-react';
+import { useVehicles, VehicleUpdateData } from '@/contexts/VehiclesContext';
 import { Vehicle } from '@/data/mockData';
+import { useAuth } from '@/contexts/AuthContext';
+import { toast } from 'sonner';
+
+interface EditFormState {
+  plate: string;
+  brand: string;
+  model: string;
+  year: number;
+  color: string;
+  ownerName: string;
+  status: 'protected' | 'pending' | 'expired';
+}
 
 export default function Vehicles() {
-  const { vehicles, inspections } = useVehicles();
+  const { vehicles, inspections, updateVehicle } = useVehicles();
+  const { user } = useAuth();
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [selectedVehicle, setSelectedVehicle] = useState<Vehicle | null>(null);
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+  const [editForm, setEditForm] = useState<EditFormState | null>(null);
+
+  const canEdit = user?.role === 'admin';
 
   const handleViewDetails = (vehicle: Vehicle) => {
     setSelectedVehicle(vehicle);
     setIsDetailsOpen(true);
+  };
+
+  const handleCloseDialog = () => {
+    setIsDetailsOpen(false);
+    setIsEditing(false);
+    setEditForm(null);
+  };
+
+  const handleStartEdit = () => {
+    if (selectedVehicle) {
+      setEditForm({
+        plate: selectedVehicle.plate,
+        brand: selectedVehicle.brand,
+        model: selectedVehicle.model,
+        year: selectedVehicle.year,
+        color: selectedVehicle.color,
+        ownerName: selectedVehicle.ownerName,
+        status: selectedVehicle.status,
+      });
+      setIsEditing(true);
+    }
+  };
+
+  const handleCancelEdit = () => {
+    setIsEditing(false);
+    setEditForm(null);
+  };
+
+  const handleSaveEdit = () => {
+    if (!selectedVehicle || !editForm) return;
+
+    // Validation
+    if (!editForm.plate.trim() || !editForm.brand.trim() || !editForm.model.trim() || 
+        !editForm.color.trim() || !editForm.ownerName.trim()) {
+      toast.error('Preencha todos os campos obrigatórios');
+      return;
+    }
+
+    if (editForm.year < 1900 || editForm.year > new Date().getFullYear() + 1) {
+      toast.error('Ano inválido');
+      return;
+    }
+
+    const updateData: VehicleUpdateData = {
+      plate: editForm.plate.toUpperCase(),
+      brand: editForm.brand,
+      model: editForm.model,
+      year: editForm.year,
+      color: editForm.color,
+      ownerName: editForm.ownerName,
+      status: editForm.status,
+    };
+
+    updateVehicle(selectedVehicle.id, updateData);
+    setSelectedVehicle({ ...selectedVehicle, ...updateData });
+    setIsEditing(false);
+    setEditForm(null);
+    toast.success('Veículo atualizado com sucesso!');
   };
 
   const getVehicleInspections = (vehicleId: string) => {
@@ -241,64 +317,152 @@ export default function Vehicles() {
         </div>
 
         {/* Vehicle Details Dialog */}
-        <Dialog open={isDetailsOpen} onOpenChange={setIsDetailsOpen}>
+        <Dialog open={isDetailsOpen} onOpenChange={handleCloseDialog}>
           <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
             {selectedVehicle && (
               <>
                 <DialogHeader>
-                  <div className="flex items-center gap-3">
-                    <Car className="h-6 w-6 text-primary" />
-                    <DialogTitle className="text-xl">
-                      Placa: {selectedVehicle.plate}
-                    </DialogTitle>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <Car className="h-6 w-6 text-primary" />
+                      <DialogTitle className="text-xl">
+                        Placa: {isEditing && editForm ? editForm.plate : selectedVehicle.plate}
+                      </DialogTitle>
+                    </div>
+                    {canEdit && !isEditing && (
+                      <Button variant="outline" size="sm" onClick={handleStartEdit} className="gap-2">
+                        <Pencil className="h-4 w-4" />
+                        Editar
+                      </Button>
+                    )}
                   </div>
                   <DialogDescription>
-                    Informações detalhadas do veículo
+                    {isEditing ? 'Editando informações do veículo' : 'Informações detalhadas do veículo'}
                   </DialogDescription>
                 </DialogHeader>
 
                 <div className="space-y-6">
-                  {/* Status Badge */}
-                  <div className="flex items-center gap-2">
-                    {getStatusIcon(selectedVehicle.status)}
-                    {getStatusBadge(selectedVehicle.status)}
-                  </div>
+                  {/* Status Badge / Select */}
+                  {isEditing && editForm ? (
+                    <div className="space-y-2">
+                      <Label>Status</Label>
+                      <Select 
+                        value={editForm.status} 
+                        onValueChange={(value: 'protected' | 'pending' | 'expired') => 
+                          setEditForm({ ...editForm, status: value })
+                        }
+                      >
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="protected">Protegido</SelectItem>
+                          <SelectItem value="pending">Pendente</SelectItem>
+                          <SelectItem value="expired">Expirado</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-2">
+                      {getStatusIcon(selectedVehicle.status)}
+                      {getStatusBadge(selectedVehicle.status)}
+                    </div>
+                  )}
 
                   <Separator />
 
                   {/* Vehicle Information */}
                   <div>
                     <h4 className="font-semibold text-foreground mb-4">Informações do Veículo</h4>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="flex items-start gap-3 p-3 rounded-lg bg-muted/50">
-                        <Car className="h-5 w-5 text-muted-foreground mt-0.5" />
-                        <div>
-                          <p className="text-sm text-muted-foreground">Veículo</p>
-                          <p className="font-medium">{selectedVehicle.brand} {selectedVehicle.model}</p>
+                    {isEditing && editForm ? (
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <Label htmlFor="plate">Placa</Label>
+                          <Input
+                            id="plate"
+                            value={editForm.plate}
+                            onChange={(e) => setEditForm({ ...editForm, plate: e.target.value.toUpperCase() })}
+                            placeholder="ABC-1234"
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="brand">Marca</Label>
+                          <Input
+                            id="brand"
+                            value={editForm.brand}
+                            onChange={(e) => setEditForm({ ...editForm, brand: e.target.value })}
+                            placeholder="Toyota"
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="model">Modelo</Label>
+                          <Input
+                            id="model"
+                            value={editForm.model}
+                            onChange={(e) => setEditForm({ ...editForm, model: e.target.value })}
+                            placeholder="Corolla"
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="year">Ano</Label>
+                          <Input
+                            id="year"
+                            type="number"
+                            value={editForm.year}
+                            onChange={(e) => setEditForm({ ...editForm, year: parseInt(e.target.value) || 0 })}
+                            min={1900}
+                            max={new Date().getFullYear() + 1}
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="color">Cor</Label>
+                          <Input
+                            id="color"
+                            value={editForm.color}
+                            onChange={(e) => setEditForm({ ...editForm, color: e.target.value })}
+                            placeholder="Prata"
+                          />
+                        </div>
+                        <div className="flex items-start gap-3 p-3 rounded-lg bg-muted/50">
+                          <Calendar className="h-5 w-5 text-muted-foreground mt-0.5" />
+                          <div>
+                            <p className="text-sm text-muted-foreground">Data de Cadastro</p>
+                            <p className="font-medium">{formatDate(selectedVehicle.createdAt)}</p>
+                          </div>
                         </div>
                       </div>
-                      <div className="flex items-start gap-3 p-3 rounded-lg bg-muted/50">
-                        <Calendar className="h-5 w-5 text-muted-foreground mt-0.5" />
-                        <div>
-                          <p className="text-sm text-muted-foreground">Ano</p>
-                          <p className="font-medium">{selectedVehicle.year}</p>
+                    ) : (
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="flex items-start gap-3 p-3 rounded-lg bg-muted/50">
+                          <Car className="h-5 w-5 text-muted-foreground mt-0.5" />
+                          <div>
+                            <p className="text-sm text-muted-foreground">Veículo</p>
+                            <p className="font-medium">{selectedVehicle.brand} {selectedVehicle.model}</p>
+                          </div>
+                        </div>
+                        <div className="flex items-start gap-3 p-3 rounded-lg bg-muted/50">
+                          <Calendar className="h-5 w-5 text-muted-foreground mt-0.5" />
+                          <div>
+                            <p className="text-sm text-muted-foreground">Ano</p>
+                            <p className="font-medium">{selectedVehicle.year}</p>
+                          </div>
+                        </div>
+                        <div className="flex items-start gap-3 p-3 rounded-lg bg-muted/50">
+                          <Palette className="h-5 w-5 text-muted-foreground mt-0.5" />
+                          <div>
+                            <p className="text-sm text-muted-foreground">Cor</p>
+                            <p className="font-medium">{selectedVehicle.color}</p>
+                          </div>
+                        </div>
+                        <div className="flex items-start gap-3 p-3 rounded-lg bg-muted/50">
+                          <Calendar className="h-5 w-5 text-muted-foreground mt-0.5" />
+                          <div>
+                            <p className="text-sm text-muted-foreground">Data de Cadastro</p>
+                            <p className="font-medium">{formatDate(selectedVehicle.createdAt)}</p>
+                          </div>
                         </div>
                       </div>
-                      <div className="flex items-start gap-3 p-3 rounded-lg bg-muted/50">
-                        <Palette className="h-5 w-5 text-muted-foreground mt-0.5" />
-                        <div>
-                          <p className="text-sm text-muted-foreground">Cor</p>
-                          <p className="font-medium">{selectedVehicle.color}</p>
-                        </div>
-                      </div>
-                      <div className="flex items-start gap-3 p-3 rounded-lg bg-muted/50">
-                        <Calendar className="h-5 w-5 text-muted-foreground mt-0.5" />
-                        <div>
-                          <p className="text-sm text-muted-foreground">Data de Cadastro</p>
-                          <p className="font-medium">{formatDate(selectedVehicle.createdAt)}</p>
-                        </div>
-                      </div>
-                    </div>
+                    )}
                   </div>
 
                   <Separator />
@@ -306,13 +470,25 @@ export default function Vehicles() {
                   {/* Owner Information */}
                   <div>
                     <h4 className="font-semibold text-foreground mb-4">Proprietário</h4>
-                    <div className="flex items-start gap-3 p-3 rounded-lg bg-muted/50">
-                      <User className="h-5 w-5 text-muted-foreground mt-0.5" />
-                      <div>
-                        <p className="text-sm text-muted-foreground">Nome</p>
-                        <p className="font-medium">{selectedVehicle.ownerName}</p>
+                    {isEditing && editForm ? (
+                      <div className="space-y-2">
+                        <Label htmlFor="ownerName">Nome do Proprietário</Label>
+                        <Input
+                          id="ownerName"
+                          value={editForm.ownerName}
+                          onChange={(e) => setEditForm({ ...editForm, ownerName: e.target.value })}
+                          placeholder="Nome completo"
+                        />
                       </div>
-                    </div>
+                    ) : (
+                      <div className="flex items-start gap-3 p-3 rounded-lg bg-muted/50">
+                        <User className="h-5 w-5 text-muted-foreground mt-0.5" />
+                        <div>
+                          <p className="text-sm text-muted-foreground">Nome</p>
+                          <p className="font-medium">{selectedVehicle.ownerName}</p>
+                        </div>
+                      </div>
+                    )}
                   </div>
 
                   <Separator />
@@ -353,10 +529,23 @@ export default function Vehicles() {
                   </div>
                 </div>
 
-                <div className="flex justify-end pt-4">
-                  <Button variant="outline" onClick={() => setIsDetailsOpen(false)}>
-                    Fechar
-                  </Button>
+                <div className="flex justify-end gap-2 pt-4">
+                  {isEditing ? (
+                    <>
+                      <Button variant="outline" onClick={handleCancelEdit} className="gap-2">
+                        <X className="h-4 w-4" />
+                        Cancelar
+                      </Button>
+                      <Button onClick={handleSaveEdit} className="gap-2">
+                        <Save className="h-4 w-4" />
+                        Salvar Alterações
+                      </Button>
+                    </>
+                  ) : (
+                    <Button variant="outline" onClick={handleCloseDialog}>
+                      Fechar
+                    </Button>
+                  )}
                 </div>
               </>
             )}
