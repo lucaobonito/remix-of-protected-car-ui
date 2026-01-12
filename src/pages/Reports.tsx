@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { Download, TrendingUp, TrendingDown, DollarSign, Car, ClipboardCheck, Users, Loader2, FileSpreadsheet, CalendarDays } from 'lucide-react';
+import { Download, TrendingUp, TrendingDown, DollarSign, Car, ClipboardCheck, Users, Loader2, FileSpreadsheet, CalendarDays, User } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import {
   AreaChart,
@@ -33,6 +33,7 @@ export default function Reports() {
   const [isExportingExcel, setIsExportingExcel] = useState(false);
   const [selectedYear, setSelectedYear] = useState<string>('2024');
   const [selectedPeriod, setSelectedPeriod] = useState<string>('all');
+  const [selectedEmployee, setSelectedEmployee] = useState<string>('all');
 
   // Mapeamento de meses para números
   const monthToNumber: Record<string, number> = {
@@ -57,7 +58,21 @@ export default function Reports() {
     return filtered;
   }, [selectedPeriod]);
 
-  // Filtrar vistorias por data
+  // Extrair lista única de vistoriadores
+  const employees = useMemo(() => {
+    const uniqueEmployees = new Map<string, { id: string; name: string }>();
+    mockInspections.forEach(i => {
+      if (!uniqueEmployees.has(i.employeeId)) {
+        uniqueEmployees.set(i.employeeId, { 
+          id: i.employeeId, 
+          name: i.employeeName 
+        });
+      }
+    });
+    return Array.from(uniqueEmployees.values());
+  }, []);
+
+  // Filtrar vistorias por data e vistoriador
   const filteredInspections = useMemo(() => {
     return mockInspections.filter(inspection => {
       const inspDate = new Date(inspection.date);
@@ -71,9 +86,12 @@ export default function Reports() {
       if (selectedPeriod === 'q3' && (inspMonth < 7 || inspMonth > 9)) return false;
       if (selectedPeriod === 'q4' && (inspMonth < 10 || inspMonth > 12)) return false;
       
+      // Filtro por vistoriador
+      if (selectedEmployee !== 'all' && inspection.employeeId !== selectedEmployee) return false;
+      
       return true;
     });
-  }, [selectedYear, selectedPeriod]);
+  }, [selectedYear, selectedPeriod, selectedEmployee]);
 
   // Filtrar veículos por data de cadastro
   const filteredVehicles = useMemo(() => {
@@ -122,6 +140,36 @@ export default function Reports() {
     { name: 'Expirados', value: expiredVehicles, color: 'hsl(var(--destructive))' },
   ];
 
+  // Dados de desempenho por vistoriador (para gráfico comparativo)
+  const employeePerformanceData = useMemo(() => {
+    // Usar vistorias filtradas por ano e período, mas ignorar filtro de funcionário
+    const inspectionsForComparison = mockInspections.filter(inspection => {
+      const inspDate = new Date(inspection.date);
+      const inspYear = inspDate.getFullYear().toString();
+      const inspMonth = inspDate.getMonth() + 1;
+      
+      if (inspYear !== selectedYear) return false;
+      if (selectedPeriod === 'q1' && (inspMonth < 1 || inspMonth > 3)) return false;
+      if (selectedPeriod === 'q2' && (inspMonth < 4 || inspMonth > 6)) return false;
+      if (selectedPeriod === 'q3' && (inspMonth < 7 || inspMonth > 9)) return false;
+      if (selectedPeriod === 'q4' && (inspMonth < 10 || inspMonth > 12)) return false;
+      
+      return true;
+    });
+
+    return employees.map(emp => {
+      const empInspections = inspectionsForComparison.filter(i => i.employeeId === emp.id);
+      return {
+        name: emp.name.split(' ')[0],
+        fullName: emp.name,
+        total: empInspections.length,
+        aprovadas: empInspections.filter(i => i.status === 'approved').length,
+        pendentes: empInspections.filter(i => i.status === 'pending' || i.status === 'in_progress').length,
+        rejeitadas: empInspections.filter(i => i.status === 'rejected').length,
+      };
+    });
+  }, [employees, selectedYear, selectedPeriod]);
+
   // Label do período selecionado
   const getPeriodLabel = () => {
     const periodLabels: Record<string, string> = {
@@ -132,6 +180,11 @@ export default function Reports() {
       'q4': '4º Trimestre (Out-Dez)',
     };
     return periodLabels[selectedPeriod] || 'Ano completo';
+  };
+
+  const getEmployeeLabel = () => {
+    if (selectedEmployee === 'all') return null;
+    return employees.find(e => e.id === selectedEmployee)?.name;
   };
 
   const handleExportPDF = async () => {
@@ -356,19 +409,34 @@ export default function Reports() {
         }, 0) / (filteredInspections.length * checklistItems.length) * 100).toFixed(1) + '%' : '0%']
       ];
 
+      // ===== ABA 6: DESEMPENHO POR VISTORIADOR =====
+      const vistoriadoresData: (string | number | undefined)[][] = [
+        [`DESEMPENHO POR VISTORIADOR - ${selectedYear} - ${getPeriodLabel()}`],
+        [],
+        ['Vistoriador', 'Total', 'Aprovadas', 'Pendentes', 'Rejeitadas', 'Taxa Aprovação'],
+        ...employeePerformanceData.map(emp => {
+          const rate = emp.total > 0 ? Math.round((emp.aprovadas / emp.total) * 100) : 0;
+          return [emp.fullName, emp.total, emp.aprovadas, emp.pendentes, emp.rejeitadas, rate + '%'];
+        })
+      ];
+
       // Criar abas com largura de colunas otimizada
       XLSX.utils.book_append_sheet(wb, createSheet(resumoData, [25, 22, 32]), 'Resumo');
       XLSX.utils.book_append_sheet(wb, createSheet(mensalData, [10, 12, 10, 12, 10, 18, 18, 12]), 'Mensal');
       XLSX.utils.book_append_sheet(wb, createSheet(vistoriasData, [6, 12, 12, 22, 8, 12, 22, 18, 15, 40]), 'Vistorias');
       XLSX.utils.book_append_sheet(wb, createSheet(veiculosData, [12, 15, 18, 8, 12, 22, 14, 15]), 'Veículos');
       XLSX.utils.book_append_sheet(wb, createSheet(checklistData, [20, 15, 15, 20]), 'Checklist');
+      XLSX.utils.book_append_sheet(wb, createSheet(vistoriadoresData, [25, 10, 12, 12, 12, 18]), 'Vistoriadores');
 
       const periodLabel = selectedPeriod === 'all' ? 'completo' : selectedPeriod;
-      XLSX.writeFile(wb, `relatorio-protectedcar-${selectedYear}-${periodLabel}-${new Date().toISOString().split('T')[0]}.xlsx`);
+      const employeeName = selectedEmployee !== 'all' 
+        ? `-${employees.find(e => e.id === selectedEmployee)?.name.replace(' ', '_')}`
+        : '';
+      XLSX.writeFile(wb, `relatorio-protectedcar-${selectedYear}-${periodLabel}${employeeName}-${new Date().toISOString().split('T')[0]}.xlsx`);
       
       toast({
         title: "Excel exportado com sucesso!",
-        description: `Relatório de ${selectedYear} - ${getPeriodLabel()} com 5 abas detalhadas.`
+        description: `Relatório de ${selectedYear} - ${getPeriodLabel()} com 6 abas detalhadas.`
       });
     } catch (error) {
       toast({
@@ -408,9 +476,24 @@ export default function Reports() {
                 <SelectItem value="q4">4º Trimestre</SelectItem>
               </SelectContent>
             </Select>
+            <Select value={selectedEmployee} onValueChange={setSelectedEmployee}>
+              <SelectTrigger className="w-48">
+                <User className="h-4 w-4 mr-2" />
+                <SelectValue placeholder="Vistoriador" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos os vistoriadores</SelectItem>
+                {employees.map(emp => (
+                  <SelectItem key={emp.id} value={emp.id}>
+                    {emp.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
             <Badge variant="outline" className="gap-1.5 py-1.5">
               <CalendarDays className="h-3.5 w-3.5" />
               {selectedYear} - {getPeriodLabel()}
+              {getEmployeeLabel() && <> | {getEmployeeLabel()}</>}
             </Badge>
           </div>
           <div className="flex gap-2">
@@ -521,6 +604,41 @@ export default function Reports() {
             </CardContent>
           </Card>
         </div>
+
+        {/* Card de Estatísticas do Vistoriador Selecionado */}
+        {selectedEmployee !== 'all' && (
+          <Card className="bg-gradient-to-br from-blue-500/10 to-blue-500/5 border-blue-500/20">
+            <CardContent className="pt-6">
+              <div className="flex items-start justify-between">
+                <div>
+                  <p className="text-sm text-muted-foreground">Estatísticas de</p>
+                  <p className="text-lg font-bold text-foreground">
+                    {getEmployeeLabel()}
+                  </p>
+                  <div className="mt-3 grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                    <div>
+                      <p className="text-muted-foreground">Total de Vistorias</p>
+                      <p className="text-xl font-semibold">{filteredInspections.length}</p>
+                    </div>
+                    <div>
+                      <p className="text-muted-foreground">Aprovadas</p>
+                      <p className="text-xl font-semibold text-success">{approvedInspections}</p>
+                    </div>
+                    <div>
+                      <p className="text-muted-foreground">Pendentes</p>
+                      <p className="text-xl font-semibold text-warning">{pendingInspections}</p>
+                    </div>
+                    <div>
+                      <p className="text-muted-foreground">Rejeitadas</p>
+                      <p className="text-xl font-semibold text-destructive">{rejectedInspections}</p>
+                    </div>
+                  </div>
+                </div>
+                <User className="h-10 w-10 text-blue-500" />
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Charts Row 1 */}
         <div className="grid gap-6 lg:grid-cols-2">
@@ -668,6 +786,39 @@ export default function Reports() {
             </CardContent>
           </Card>
         </div>
+
+        {/* Gráfico Comparativo de Vistoriadores */}
+        {selectedEmployee === 'all' && employeePerformanceData.length > 0 && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Users className="h-5 w-5" />
+                Desempenho por Vistoriador
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <ResponsiveContainer width="100%" height={300}>
+                <BarChart data={employeePerformanceData}>
+                  <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
+                  <XAxis dataKey="name" tick={{ fill: 'hsl(var(--muted-foreground))' }} />
+                  <YAxis tick={{ fill: 'hsl(var(--muted-foreground))' }} />
+                  <Tooltip
+                    contentStyle={{
+                      backgroundColor: 'hsl(var(--card))',
+                      border: '1px solid hsl(var(--border))',
+                      borderRadius: '8px',
+                    }}
+                    formatter={(value: number, name: string) => [value, name]}
+                  />
+                  <Legend />
+                  <Bar dataKey="aprovadas" stackId="a" fill="hsl(var(--success))" name="Aprovadas" radius={[0, 0, 0, 0]} />
+                  <Bar dataKey="pendentes" stackId="a" fill="hsl(var(--warning))" name="Pendentes" radius={[0, 0, 0, 0]} />
+                  <Bar dataKey="rejeitadas" stackId="a" fill="hsl(var(--destructive))" name="Rejeitadas" radius={[4, 4, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </CardContent>
+          </Card>
+        )}
         </div>
       </div>
     </AppLayout>
