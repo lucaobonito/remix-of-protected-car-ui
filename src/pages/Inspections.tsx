@@ -44,8 +44,13 @@ export default function Inspections() {
 
   const employees = [...new Set(inspections.map(i => i.employeeName))];
 
-  // Only admins can change status
-  const canChangeStatus = user?.role === 'admin';
+  // Check if user can change status of a specific inspection
+  // Admins can change any inspection, employees can only change their own
+  const canChangeStatus = (inspection: Inspection) => {
+    if (!user) return false;
+    if (user.role === 'admin') return true;
+    return inspection.employeeId === user.id;
+  };
 
   const filteredInspections = inspections.filter(inspection => {
     const matchesSearch = 
@@ -290,7 +295,7 @@ export default function Inspections() {
                             <Eye className="h-4 w-4 mr-2" />
                             Ver Detalhes
                           </DropdownMenuItem>
-                          {canChangeStatus && (
+                          {canChangeStatus(inspection) && (
                             <>
                               <DropdownMenuSeparator />
                               <DropdownMenuItem onClick={() => handleOpenStatusChange(inspection)}>
