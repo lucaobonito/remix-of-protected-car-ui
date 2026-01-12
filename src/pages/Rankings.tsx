@@ -35,17 +35,25 @@ import {
 import { mockInspections, Inspection } from '@/data/mockData';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
+import { useGoals } from '@/contexts/GoalsContext';
+import { GoalsSettingsDialog } from '@/components/GoalsSettingsDialog';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 
 export default function Rankings() {
   const { toast } = useToast();
+  const { getGoalsForPeriod } = useGoals();
   const reportRef = useRef<HTMLDivElement>(null);
   const [isExporting, setIsExporting] = useState(false);
   const [isExportingExcel, setIsExportingExcel] = useState(false);
   const [selectedYear, setSelectedYear] = useState<string>('2024');
   const [selectedPeriod, setSelectedPeriod] = useState<string>('all');
   const [activeTab, setActiveTab] = useState<string>('inspections');
+
+  // Obter metas do contexto baseado no período
+  const goals = useMemo(() => {
+    return getGoalsForPeriod(selectedPeriod);
+  }, [selectedPeriod, getGoalsForPeriod]);
 
   // Extrair lista única de vistoriadores
   const employees = useMemo(() => {
@@ -99,17 +107,6 @@ export default function Rankings() {
       };
     });
   }, [employees, filteredInspections]);
-
-  // Metas por período
-  const goals = useMemo(() => {
-    const periodMultiplier = selectedPeriod === 'all' ? 12 : 3;
-    return {
-      minInspections: 5 * periodMultiplier,
-      targetInspections: 8 * periodMultiplier,
-      minApprovalRate: 70,
-      targetApprovalRate: 85,
-    };
-  }, [selectedPeriod]);
 
   // Ranking ordenado por desempenho
   const employeeRanking = useMemo(() => {
@@ -434,7 +431,8 @@ export default function Rankings() {
               {selectedYear} - {getPeriodLabel()}
             </Badge>
           </div>
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
+            <GoalsSettingsDialog />
             <Button 
               variant="outline" 
               className="gap-2"
