@@ -22,6 +22,13 @@ interface VehiclesContextType {
     pending: number;
     rejected: number;
   };
+  getEmployeeStatsForCurrentMonth: (employeeId: string) => {
+    total: number;
+    approved: number;
+    pending: number;
+    rejected: number;
+    approvalRate: number;
+  };
 }
 
 const VehiclesContext = createContext<VehiclesContextType | undefined>(undefined);
@@ -108,8 +115,29 @@ export function VehiclesProvider({ children }: { children: ReactNode }) {
     };
   };
 
+  const getEmployeeStatsForCurrentMonth = (employeeId: string) => {
+    const now = new Date();
+    const currentMonth = now.getMonth();
+    const currentYear = now.getFullYear();
+
+    const employeeInspections = inspections.filter(i => {
+      if (i.employeeId !== employeeId) return false;
+      const inspectionDate = new Date(i.date);
+      return inspectionDate.getMonth() === currentMonth && 
+             inspectionDate.getFullYear() === currentYear;
+    });
+
+    const total = employeeInspections.length;
+    const approved = employeeInspections.filter(i => i.status === 'approved').length;
+    const pending = employeeInspections.filter(i => i.status === 'pending' || i.status === 'in_progress').length;
+    const rejected = employeeInspections.filter(i => i.status === 'rejected').length;
+    const approvalRate = total > 0 ? (approved / total) * 100 : 0;
+
+    return { total, approved, pending, rejected, approvalRate };
+  };
+
   return (
-    <VehiclesContext.Provider value={{ vehicles, inspections, addVehicle, addInspection, updateVehicle, updateInspectionStatus, getEmployeeStats }}>
+    <VehiclesContext.Provider value={{ vehicles, inspections, addVehicle, addInspection, updateVehicle, updateInspectionStatus, getEmployeeStats, getEmployeeStatsForCurrentMonth }}>
       {children}
     </VehiclesContext.Provider>
   );
