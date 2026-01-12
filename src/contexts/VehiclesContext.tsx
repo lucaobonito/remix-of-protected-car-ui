@@ -1,11 +1,14 @@
 import React, { createContext, useContext, useState, ReactNode } from 'react';
 import { Vehicle, Inspection, StatusHistoryEntry, mockVehicles, mockInspections } from '@/data/mockData';
 
+export type VehicleUpdateData = Partial<Omit<Vehicle, 'id' | 'createdAt'>>;
+
 interface VehiclesContextType {
   vehicles: Vehicle[];
   inspections: Inspection[];
   addVehicle: (vehicle: Omit<Vehicle, 'id' | 'createdAt'>) => Vehicle;
   addInspection: (inspection: Omit<Inspection, 'id'>) => Inspection;
+  updateVehicle: (vehicleId: string, data: VehicleUpdateData) => void;
   updateInspectionStatus: (
     inspectionId: string, 
     newStatus: Inspection['status'],
@@ -44,6 +47,25 @@ export function VehiclesProvider({ children }: { children: ReactNode }) {
     };
     setInspections(prev => [...prev, newInspection]);
     return newInspection;
+  };
+
+  const updateVehicle = (vehicleId: string, data: VehicleUpdateData) => {
+    setVehicles(prev => 
+      prev.map(vehicle => 
+        vehicle.id === vehicleId ? { ...vehicle, ...data } : vehicle
+      )
+    );
+    
+    // Also update vehicle info in related inspections
+    setInspections(prev =>
+      prev.map(inspection => {
+        if (inspection.vehicleId !== vehicleId) return inspection;
+        return {
+          ...inspection,
+          vehicle: { ...inspection.vehicle, ...data },
+        };
+      })
+    );
   };
 
   const updateInspectionStatus = (
@@ -87,7 +109,7 @@ export function VehiclesProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <VehiclesContext.Provider value={{ vehicles, inspections, addVehicle, addInspection, updateInspectionStatus, getEmployeeStats }}>
+    <VehiclesContext.Provider value={{ vehicles, inspections, addVehicle, addInspection, updateVehicle, updateInspectionStatus, getEmployeeStats }}>
       {children}
     </VehiclesContext.Provider>
   );
