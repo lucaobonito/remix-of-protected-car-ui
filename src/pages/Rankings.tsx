@@ -37,6 +37,7 @@ import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 import { useGoals } from '@/contexts/GoalsContext';
 import { GoalsSettingsDialog } from '@/components/GoalsSettingsDialog';
+import { GoalsHistoryDialog } from '@/components/GoalsHistoryDialog';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 
@@ -433,6 +434,7 @@ export default function Rankings() {
           </div>
           <div className="flex flex-wrap gap-2">
             <GoalsSettingsDialog />
+            <GoalsHistoryDialog />
             <Button 
               variant="outline" 
               className="gap-2"

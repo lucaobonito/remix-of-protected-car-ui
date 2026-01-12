@@ -5,7 +5,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Settings2, Target, Award, RotateCcw, Save, Info } from 'lucide-react';
+import { Textarea } from '@/components/ui/textarea';
+import { Settings2, Target, Award, RotateCcw, Save, Info, MessageSquare } from 'lucide-react';
 import { useGoals, GoalsConfig, PeriodGoals } from '@/contexts/GoalsContext';
 import { useToast } from '@/hooks/use-toast';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
@@ -122,10 +123,12 @@ export function GoalsSettingsDialog() {
   const [open, setOpen] = useState(false);
   const [localGoals, setLocalGoals] = useState<GoalsConfig>(goals);
   const [activeTab, setActiveTab] = useState('monthly');
+  const [note, setNote] = useState('');
 
   const handleOpen = (isOpen: boolean) => {
     if (isOpen) {
       setLocalGoals(goals);
+      setNote('');
     }
     setOpen(isOpen);
   };
@@ -156,11 +159,12 @@ export function GoalsSettingsDialog() {
     if (!validatePeriod(localGoals.quarterly, 'Trimestral')) return;
     if (!validatePeriod(localGoals.yearly, 'Anual')) return;
 
-    updateGoals(localGoals);
+    updateGoals(localGoals, note.trim() || undefined);
     setOpen(false);
+    setNote('');
     toast({
       title: "Metas salvas",
-      description: "As metas foram atualizadas com sucesso."
+      description: "As metas foram atualizadas com sucesso e registradas no histórico."
     });
   };
 
@@ -246,13 +250,31 @@ export function GoalsSettingsDialog() {
           </TabsContent>
         </Tabs>
 
-        <div className="bg-muted/50 rounded-lg p-4 mt-2">
-          <h4 className="text-sm font-medium mb-2">Como as metas funcionam?</h4>
-          <ul className="text-xs text-muted-foreground space-y-1">
-            <li>• <span className="text-success font-medium">Meta atingida:</span> Vistoriador alcançou ou superou a meta ideal</li>
-            <li>• <span className="text-warning font-medium">Mínimo atingido:</span> Vistoriador está entre o mínimo e a meta</li>
-            <li>• <span className="text-destructive font-medium">Abaixo do mínimo:</span> Vistoriador precisa melhorar</li>
-          </ul>
+        <div className="space-y-3">
+          <div className="space-y-2">
+            <Label htmlFor="note" className="flex items-center gap-2 text-sm">
+              <MessageSquare className="h-4 w-4 text-muted-foreground" />
+              Nota (opcional)
+            </Label>
+            <Textarea
+              id="note"
+              placeholder="Adicione uma nota explicando o motivo da alteração..."
+              value={note}
+              onChange={(e) => setNote(e.target.value)}
+              className="h-20 resize-none"
+              maxLength={200}
+            />
+            <p className="text-xs text-muted-foreground text-right">{note.length}/200</p>
+          </div>
+
+          <div className="bg-muted/50 rounded-lg p-4">
+            <h4 className="text-sm font-medium mb-2">Como as metas funcionam?</h4>
+            <ul className="text-xs text-muted-foreground space-y-1">
+              <li>• <span className="text-success font-medium">Meta atingida:</span> Vistoriador alcançou ou superou a meta ideal</li>
+              <li>• <span className="text-warning font-medium">Mínimo atingido:</span> Vistoriador está entre o mínimo e a meta</li>
+              <li>• <span className="text-destructive font-medium">Abaixo do mínimo:</span> Vistoriador precisa melhorar</li>
+            </ul>
+          </div>
         </div>
 
         <DialogFooter className="flex-col sm:flex-row gap-2">
