@@ -13,6 +13,7 @@ import {
   Menu,
   X,
   Columns3,
+  Trophy,
 } from 'lucide-react';
 import { useAuth, UserRole } from '@/contexts/AuthContext';
 import { cn } from '@/lib/utils';
@@ -34,6 +35,7 @@ const navItems: NavItem[] = [
   { title: 'Kanban', icon: Columns3, href: '/kanban', roles: ['admin', 'employee'] },
   { title: 'Realizar Vistoria', icon: FileSearch, href: '/new-inspection', roles: ['employee'] },
   { title: 'Relatórios', icon: BarChart3, href: '/reports', roles: ['admin'] },
+  { title: 'Rankings', icon: Trophy, href: '/rankings', roles: ['admin'] },
   { title: 'Usuários', icon: Users, href: '/users', roles: ['admin'] },
   { title: 'Configurações', icon: Settings, href: '/settings', roles: ['admin', 'employee'] },
 ];
