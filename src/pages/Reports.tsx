@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { Download, TrendingUp, TrendingDown, DollarSign, Car, ClipboardCheck, Users, Loader2, FileSpreadsheet, CalendarDays, User } from 'lucide-react';
+import { Download, TrendingUp, TrendingDown, DollarSign, Car, ClipboardCheck, Users, Loader2, FileSpreadsheet, CalendarDays, User, Trophy, Medal, Target, Award, Star } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import {
   AreaChart,
@@ -159,16 +159,47 @@ export default function Reports() {
 
     return employees.map(emp => {
       const empInspections = inspectionsForComparison.filter(i => i.employeeId === emp.id);
+      const approved = empInspections.filter(i => i.status === 'approved').length;
+      const total = empInspections.length;
+      const approvalRate = total > 0 ? Math.round((approved / total) * 100) : 0;
+      
       return {
+        id: emp.id,
         name: emp.name.split(' ')[0],
         fullName: emp.name,
-        total: empInspections.length,
-        aprovadas: empInspections.filter(i => i.status === 'approved').length,
+        total,
+        aprovadas: approved,
         pendentes: empInspections.filter(i => i.status === 'pending' || i.status === 'in_progress').length,
         rejeitadas: empInspections.filter(i => i.status === 'rejected').length,
+        approvalRate,
       };
     });
   }, [employees, selectedYear, selectedPeriod]);
+
+  // Metas por período
+  const goals = useMemo(() => {
+    const periodMultiplier = selectedPeriod === 'all' ? 12 : 3; // meses
+    return {
+      minInspections: 5 * periodMultiplier, // 5 vistorias/mês
+      targetInspections: 8 * periodMultiplier, // 8 vistorias/mês
+      minApprovalRate: 70, // 70% mínimo
+      targetApprovalRate: 85, // 85% meta
+    };
+  }, [selectedPeriod]);
+
+  // Ranking ordenado por desempenho (aprovações + taxa)
+  const employeeRanking = useMemo(() => {
+    return [...employeePerformanceData]
+      .map(emp => ({
+        ...emp,
+        score: emp.aprovadas * 10 + emp.approvalRate, // Pontuação combinada
+        metInspectionGoal: emp.total >= goals.minInspections,
+        exceededInspectionGoal: emp.total >= goals.targetInspections,
+        metApprovalGoal: emp.approvalRate >= goals.minApprovalRate,
+        exceededApprovalGoal: emp.approvalRate >= goals.targetApprovalRate,
+      }))
+      .sort((a, b) => b.score - a.score);
+  }, [employeePerformanceData, goals]);
 
   // Label do período selecionado
   const getPeriodLabel = () => {
@@ -816,6 +847,148 @@ export default function Reports() {
                   <Bar dataKey="rejeitadas" stackId="a" fill="hsl(var(--destructive))" name="Rejeitadas" radius={[4, 4, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Ranking de Vistoriadores */}
+        {selectedEmployee === 'all' && employeeRanking.length > 0 && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Trophy className="h-5 w-5 text-amber-500" />
+                Ranking de Vistoriadores
+              </CardTitle>
+              <p className="text-sm text-muted-foreground">
+                Metas do período: {goals.targetInspections} vistorias | {goals.targetApprovalRate}% aprovação
+              </p>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                {employeeRanking.map((emp, index) => {
+                  const isFirst = index === 0;
+                  const isSecond = index === 1;
+                  const isThird = index === 2;
+                  
+                  return (
+                    <div 
+                      key={emp.id}
+                      className={`flex items-center gap-4 p-4 rounded-lg border transition-all ${
+                        isFirst 
+                          ? 'bg-gradient-to-r from-amber-500/10 to-amber-500/5 border-amber-500/30' 
+                          : isSecond 
+                            ? 'bg-gradient-to-r from-slate-400/10 to-slate-400/5 border-slate-400/30'
+                            : isThird
+                              ? 'bg-gradient-to-r from-orange-600/10 to-orange-600/5 border-orange-600/30'
+                              : 'bg-muted/30 border-border'
+                      }`}
+                    >
+                      {/* Posição */}
+                      <div className="flex-shrink-0 w-12 h-12 flex items-center justify-center">
+                        {isFirst ? (
+                          <Trophy className="h-8 w-8 text-amber-500" />
+                        ) : isSecond ? (
+                          <Medal className="h-8 w-8 text-slate-400" />
+                        ) : isThird ? (
+                          <Medal className="h-8 w-8 text-orange-600" />
+                        ) : (
+                          <span className="text-2xl font-bold text-muted-foreground">#{index + 1}</span>
+                        )}
+                      </div>
+
+                      {/* Info do vistoriador */}
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2">
+                          <p className="font-semibold text-foreground truncate">{emp.fullName}</p>
+                          {isFirst && (
+                            <Badge className="bg-amber-500/20 text-amber-600 border-amber-500/30">
+                              <Star className="h-3 w-3 mr-1" />
+                              Top Performer
+                            </Badge>
+                          )}
+                        </div>
+                        <div className="flex flex-wrap gap-4 mt-1 text-sm">
+                          <span className="text-muted-foreground">
+                            {emp.total} vistorias
+                          </span>
+                          <span className="text-success">
+                            {emp.aprovadas} aprovadas
+                          </span>
+                          <span className={`font-medium ${
+                            emp.approvalRate >= goals.targetApprovalRate 
+                              ? 'text-success' 
+                              : emp.approvalRate >= goals.minApprovalRate 
+                                ? 'text-warning' 
+                                : 'text-destructive'
+                          }`}>
+                            {emp.approvalRate}% aprovação
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Indicadores de metas */}
+                      <div className="flex-shrink-0 flex items-center gap-2">
+                        {emp.exceededInspectionGoal ? (
+                          <div className="flex items-center gap-1 px-2 py-1 rounded-full bg-success/10 text-success text-xs">
+                            <Target className="h-3 w-3" />
+                            Meta Vistorias
+                          </div>
+                        ) : emp.metInspectionGoal ? (
+                          <div className="flex items-center gap-1 px-2 py-1 rounded-full bg-warning/10 text-warning text-xs">
+                            <Target className="h-3 w-3" />
+                            Mínimo
+                          </div>
+                        ) : (
+                          <div className="flex items-center gap-1 px-2 py-1 rounded-full bg-destructive/10 text-destructive text-xs">
+                            <Target className="h-3 w-3" />
+                            Abaixo
+                          </div>
+                        )}
+                        
+                        {emp.exceededApprovalGoal ? (
+                          <div className="flex items-center gap-1 px-2 py-1 rounded-full bg-success/10 text-success text-xs">
+                            <Award className="h-3 w-3" />
+                            Meta Qualidade
+                          </div>
+                        ) : emp.metApprovalGoal ? (
+                          <div className="flex items-center gap-1 px-2 py-1 rounded-full bg-warning/10 text-warning text-xs">
+                            <Award className="h-3 w-3" />
+                            Mínimo
+                          </div>
+                        ) : (
+                          <div className="flex items-center gap-1 px-2 py-1 rounded-full bg-destructive/10 text-destructive text-xs">
+                            <Award className="h-3 w-3" />
+                            Abaixo
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Legenda de Metas */}
+              <div className="mt-6 pt-4 border-t border-border">
+                <p className="text-sm font-medium text-foreground mb-2">Legenda de Metas</p>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-xs">
+                  <div className="flex items-center gap-2">
+                    <div className="w-3 h-3 rounded-full bg-success"></div>
+                    <span className="text-muted-foreground">Meta atingida ({goals.targetInspections}+ vistorias, {goals.targetApprovalRate}%+ aprovação)</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="w-3 h-3 rounded-full bg-warning"></div>
+                    <span className="text-muted-foreground">Mínimo atingido ({goals.minInspections}+ vistorias, {goals.minApprovalRate}%+ aprovação)</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="w-3 h-3 rounded-full bg-destructive"></div>
+                    <span className="text-muted-foreground">Abaixo do mínimo</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Trophy className="h-3 w-3 text-amber-500" />
+                    <span className="text-muted-foreground">Melhor desempenho do período</span>
+                  </div>
+                </div>
+              </div>
             </CardContent>
           </Card>
         )}
