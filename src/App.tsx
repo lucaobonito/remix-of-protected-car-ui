@@ -8,6 +8,7 @@ import { ThemeProvider } from "@/contexts/ThemeContext";
 import { NotificationsProvider } from "@/contexts/NotificationsContext";
 import { VehiclesProvider } from "@/contexts/VehiclesContext";
 import { GoalsProvider } from "@/contexts/GoalsContext";
+import { AchievementsProvider } from "@/contexts/AchievementsContext";
 import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
 import Vehicles from "./pages/Vehicles";
@@ -29,26 +30,28 @@ const App = () => (
         <VehiclesProvider>
           <NotificationsProvider>
             <GoalsProvider>
-              <TooltipProvider>
-                <Toaster />
-                <Sonner />
-                <BrowserRouter>
-                  <Routes>
-                    <Route path="/" element={<Navigate to="/login" replace />} />
-                    <Route path="/login" element={<Login />} />
-                    <Route path="/dashboard" element={<Dashboard />} />
-                    <Route path="/vehicles" element={<Vehicles />} />
-                    <Route path="/inspections" element={<Inspections />} />
-                    <Route path="/new-inspection" element={<NewInspection />} />
-                    <Route path="/kanban" element={<Kanban />} />
-                    <Route path="/reports" element={<Reports />} />
-                    <Route path="/rankings" element={<Rankings />} />
-                    <Route path="/users" element={<Users />} />
-                    <Route path="/settings" element={<Settings />} />
-                    <Route path="*" element={<NotFound />} />
-                  </Routes>
-                </BrowserRouter>
-              </TooltipProvider>
+              <AchievementsProvider>
+                <TooltipProvider>
+                  <Toaster />
+                  <Sonner />
+                  <BrowserRouter>
+                    <Routes>
+                      <Route path="/" element={<Navigate to="/login" replace />} />
+                      <Route path="/login" element={<Login />} />
+                      <Route path="/dashboard" element={<Dashboard />} />
+                      <Route path="/vehicles" element={<Vehicles />} />
+                      <Route path="/inspections" element={<Inspections />} />
+                      <Route path="/new-inspection" element={<NewInspection />} />
+                      <Route path="/kanban" element={<Kanban />} />
+                      <Route path="/reports" element={<Reports />} />
+                      <Route path="/rankings" element={<Rankings />} />
+                      <Route path="/users" element={<Users />} />
+                      <Route path="/settings" element={<Settings />} />
+                      <Route path="*" element={<NotFound />} />
+                    </Routes>
+                  </BrowserRouter>
+                </TooltipProvider>
+              </AchievementsProvider>
             </GoalsProvider>
           </NotificationsProvider>
         </VehiclesProvider>
