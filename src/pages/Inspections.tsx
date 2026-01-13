@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { AppLayout } from '@/components/AppLayout';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -33,9 +34,20 @@ export default function Inspections() {
   const { inspections, updateInspectionStatus } = useVehicles();
   const { user } = useAuth();
   const { toast } = useToast();
+  const [searchParams, setSearchParams] = useSearchParams();
+  
+  // Initialize filters from URL query params
   const [searchTerm, setSearchTerm] = useState('');
-  const [statusFilter, setStatusFilter] = useState('all');
-  const [employeeFilter, setEmployeeFilter] = useState('all');
+  const [statusFilter, setStatusFilter] = useState(searchParams.get('status') || 'all');
+  const [employeeFilter, setEmployeeFilter] = useState(searchParams.get('employee') || 'all');
+
+  // Sync URL when filters change
+  useEffect(() => {
+    const params = new URLSearchParams();
+    if (statusFilter !== 'all') params.set('status', statusFilter);
+    if (employeeFilter !== 'all') params.set('employee', employeeFilter);
+    setSearchParams(params, { replace: true });
+  }, [statusFilter, employeeFilter, setSearchParams]);
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
   const [isStatusChangeOpen, setIsStatusChangeOpen] = useState(false);
   const [selectedInspection, setSelectedInspection] = useState<Inspection | null>(null);

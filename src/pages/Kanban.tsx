@@ -1,4 +1,5 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { Search } from 'lucide-react';
 import { AppLayout } from '@/components/AppLayout';
 import { KanbanColumn } from '@/components/KanbanColumn';
@@ -28,8 +29,18 @@ export default function Kanban() {
   const { inspections, updateInspectionStatus } = useVehicles();
   const { user } = useAuth();
   const { toast } = useToast();
+  const [searchParams, setSearchParams] = useSearchParams();
+  
+  // Initialize filters from URL query params
   const [searchTerm, setSearchTerm] = useState('');
-  const [employeeFilter, setEmployeeFilter] = useState('all');
+  const [employeeFilter, setEmployeeFilter] = useState(searchParams.get('employee') || 'all');
+
+  // Sync URL when filters change
+  useEffect(() => {
+    const params = new URLSearchParams();
+    if (employeeFilter !== 'all') params.set('employee', employeeFilter);
+    setSearchParams(params, { replace: true });
+  }, [employeeFilter, setSearchParams]);
 
   // Get unique employees
   const employees = useMemo(() => {
