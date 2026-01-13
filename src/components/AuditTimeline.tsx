@@ -23,6 +23,7 @@ interface AuditTimelineProps {
   logs: AuditLogEntry[];
   showEntity?: boolean;
   maxItems?: number;
+  personalizedView?: boolean;
 }
 
 const actionIcons = {
@@ -43,7 +44,7 @@ const actionColors = {
   LOGOUT: 'bg-slate-400',
 };
 
-export function AuditTimeline({ logs, showEntity = true, maxItems }: AuditTimelineProps) {
+export function AuditTimeline({ logs, showEntity = true, maxItems, personalizedView = false }: AuditTimelineProps) {
   const displayLogs = maxItems ? logs.slice(0, maxItems) : logs;
 
   if (displayLogs.length === 0) {
@@ -62,6 +63,7 @@ export function AuditTimeline({ logs, showEntity = true, maxItems }: AuditTimeli
           log={log} 
           showEntity={showEntity}
           isLast={index === displayLogs.length - 1}
+          personalizedView={personalizedView}
         />
       ))}
       {maxItems && logs.length > maxItems && (
@@ -77,13 +79,27 @@ interface AuditTimelineItemProps {
   log: AuditLogEntry;
   showEntity: boolean;
   isLast: boolean;
+  personalizedView?: boolean;
 }
 
-function AuditTimelineItem({ log, showEntity, isLast }: AuditTimelineItemProps) {
+const personalizedDescriptions: Record<string, (desc: string) => string> = {
+  CREATE: (desc) => desc.replace(/^.+ criou/, 'Você criou'),
+  UPDATE: (desc) => desc.replace(/^.+ atualizou/, 'Você atualizou').replace(/^.+ alterou/, 'Você alterou'),
+  DELETE: (desc) => desc.replace(/^.+ excluiu/, 'Você excluiu').replace(/^.+ removeu/, 'Você removeu'),
+  STATUS_CHANGE: (desc) => desc.replace(/^.+ alterou o status/, 'Você alterou o status'),
+  LOGIN: () => 'Você fez login no sistema',
+  LOGOUT: () => 'Você saiu do sistema',
+};
+
+function AuditTimelineItem({ log, showEntity, isLast, personalizedView = false }: AuditTimelineItemProps) {
   const [isOpen, setIsOpen] = useState(false);
   const Icon = actionIcons[log.action];
   const colorClass = actionColors[log.action];
   const hasChanges = log.changes && log.changes.length > 0;
+
+  const displayDescription = personalizedView && personalizedDescriptions[log.action]
+    ? personalizedDescriptions[log.action](log.entityDescription)
+    : log.entityDescription;
 
   return (
     <div className="flex gap-4">
@@ -106,12 +122,14 @@ function AuditTimelineItem({ log, showEntity, isLast }: AuditTimelineItemProps) 
           <div className="flex items-start justify-between gap-2">
             <div className="space-y-1">
               <div className="flex flex-wrap items-center gap-2">
-                <span className="font-medium text-foreground">{log.userName}</span>
+                {!personalizedView && (
+                  <span className="font-medium text-foreground">{log.userName}</span>
+                )}
                 <AuditActionBadge action={log.action} />
                 {showEntity && <AuditEntityBadge entity={log.entity} />}
               </div>
               <p className="text-sm text-muted-foreground">
-                {log.entityDescription}
+                {displayDescription}
               </p>
               <p className="text-xs text-muted-foreground">
                 {format(new Date(log.timestamp), "dd 'de' MMMM 'às' HH:mm", { locale: ptBR })}

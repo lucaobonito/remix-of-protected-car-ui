@@ -25,6 +25,7 @@ import { AchievementsDialog } from '@/components/AchievementsDialog';
 import { achievements } from '@/data/achievements';
 import { QuickActionsBar } from '@/components/QuickActionsBar';
 import { AlertsCard, AlertItem } from '@/components/AlertsCard';
+import { EmployeeActivityLog } from '@/components/EmployeeActivityLog';
 
 export function EmployeeDashboard() {
   const { user } = useAuth();
@@ -373,6 +374,9 @@ export function EmployeeDashboard() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Activity Log */}
+      <EmployeeActivityLog />
 
       {/* Monthly Summary */}
       <Card>
