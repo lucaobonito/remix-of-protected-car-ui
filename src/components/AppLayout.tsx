@@ -1,5 +1,7 @@
 import { ReactNode, useState } from 'react';
-import { Navigate } from 'react-router-dom';
+import { Navigate, useLocation } from 'react-router-dom';
+import { PageBreadcrumb } from './PageBreadcrumb';
+import { BreadcrumbItem } from '@/config/routes';
 import { useAuth } from '@/contexts/AuthContext';
 import { AppSidebar } from './AppSidebar';
 import { ThemeToggle } from './ThemeToggle';
@@ -10,7 +12,7 @@ import { useIsBelowLg } from '@/hooks/use-mobile';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 
 // Duplicar SidebarContent para evitar import circular
-import { useLocation, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import {
   LayoutDashboard,
   Car,
@@ -127,12 +129,17 @@ function MobileSidebarContent({ onNavigate }: { onNavigate?: () => void }) {
 interface AppLayoutProps {
   children: ReactNode;
   title?: string;
+  breadcrumbs?: BreadcrumbItem[];
 }
 
-export function AppLayout({ children, title }: AppLayoutProps) {
+export function AppLayout({ children, title, breadcrumbs }: AppLayoutProps) {
   const { isAuthenticated, user } = useAuth();
   const isBelowLg = useIsBelowLg();
+  const location = useLocation();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  
+  // Don't show breadcrumbs on dashboard (it's the root)
+  const showBreadcrumbs = location.pathname !== '/dashboard';
 
   if (!isAuthenticated) {
     return <Navigate to="/login" replace />;
@@ -161,11 +168,16 @@ export function AppLayout({ children, title }: AppLayoutProps) {
                 </SheetContent>
               </Sheet>
             )}
-            {title && (
-              <h1 className="text-lg sm:text-xl font-semibold text-foreground truncate">
-                {title}
-              </h1>
-            )}
+            <div className="flex flex-col gap-0.5">
+              {showBreadcrumbs && (
+                <PageBreadcrumb customBreadcrumbs={breadcrumbs} />
+              )}
+              {title && !showBreadcrumbs && (
+                <h1 className="text-lg sm:text-xl font-semibold text-foreground truncate">
+                  {title}
+                </h1>
+              )}
+            </div>
           </div>
           <div className="flex items-center gap-1 sm:gap-2">
             <NotificationsDropdown />
