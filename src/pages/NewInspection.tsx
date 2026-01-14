@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Car, Upload, Check, X, Camera } from 'lucide-react';
+import { Car, Upload, Check, Camera, User, MapPin, Phone, Mail, Search } from 'lucide-react';
 import { AppLayout } from '@/components/AppLayout';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -8,6 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { useVehicles } from '@/contexts/VehiclesContext';
@@ -19,6 +20,11 @@ interface ChecklistItem {
   checked: boolean;
 }
 
+const brazilianStates = [
+  'AC', 'AL', 'AP', 'AM', 'BA', 'CE', 'DF', 'ES', 'GO', 'MA', 'MT', 'MS', 'MG',
+  'PA', 'PB', 'PR', 'PE', 'PI', 'RJ', 'RN', 'RS', 'RO', 'RR', 'SC', 'SP', 'SE', 'TO'
+];
+
 export default function NewInspection() {
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -27,12 +33,25 @@ export default function NewInspection() {
   const isEmployee = user?.role === 'employee';
 
   const [formData, setFormData] = useState({
+    // Dados do Veículo
     plate: '',
     brand: '',
     model: '',
     year: '',
     color: '',
+    // Dados do Cliente
     ownerName: '',
+    ownerCpf: '',
+    ownerPhone: '',
+    ownerWhatsapp: '',
+    ownerEmail: '',
+    ownerCep: '',
+    ownerAddress: '',
+    ownerAddressNumber: '',
+    ownerAddressComplement: '',
+    ownerNeighborhood: '',
+    ownerCity: '',
+    ownerState: '',
     notes: '',
   });
 
@@ -47,10 +66,98 @@ export default function NewInspection() {
 
   const [photos, setPhotos] = useState<string[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isSearchingCep, setIsSearchingCep] = useState(false);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
+  };
+
+  const handleStateChange = (value: string) => {
+    setFormData(prev => ({ ...prev, ownerState: value }));
+  };
+
+  const formatCpf = (value: string) => {
+    const numbers = value.replace(/\D/g, '');
+    return numbers
+      .replace(/(\d{3})(\d)/, '$1.$2')
+      .replace(/(\d{3})(\d)/, '$1.$2')
+      .replace(/(\d{3})(\d{1,2})/, '$1-$2')
+      .replace(/(-\d{2})\d+?$/, '$1');
+  };
+
+  const formatPhone = (value: string) => {
+    const numbers = value.replace(/\D/g, '');
+    return numbers
+      .replace(/(\d{2})(\d)/, '($1) $2')
+      .replace(/(\d{5})(\d)/, '$1-$2')
+      .replace(/(-\d{4})\d+?$/, '$1');
+  };
+
+  const formatCep = (value: string) => {
+    const numbers = value.replace(/\D/g, '');
+    return numbers.replace(/(\d{5})(\d)/, '$1-$2').replace(/(-\d{3})\d+?$/, '$1');
+  };
+
+  const handleFormattedInput = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    let formattedValue = value;
+
+    if (name === 'ownerCpf') {
+      formattedValue = formatCpf(value);
+    } else if (name === 'ownerPhone' || name === 'ownerWhatsapp') {
+      formattedValue = formatPhone(value);
+    } else if (name === 'ownerCep') {
+      formattedValue = formatCep(value);
+    }
+
+    setFormData(prev => ({ ...prev, [name]: formattedValue }));
+  };
+
+  const handleSearchCep = async () => {
+    const cep = formData.ownerCep.replace(/\D/g, '');
+    if (cep.length !== 8) {
+      toast({
+        title: 'CEP inválido',
+        description: 'Digite um CEP válido com 8 dígitos.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    setIsSearchingCep(true);
+    try {
+      const response = await fetch(`https://viacep.com.br/ws/${cep}/json/`);
+      const data = await response.json();
+      
+      if (data.erro) {
+        toast({
+          title: 'CEP não encontrado',
+          description: 'Verifique o CEP e tente novamente.',
+          variant: 'destructive',
+        });
+      } else {
+        setFormData(prev => ({
+          ...prev,
+          ownerAddress: data.logradouro || '',
+          ownerNeighborhood: data.bairro || '',
+          ownerCity: data.localidade || '',
+          ownerState: data.uf || '',
+        }));
+        toast({
+          title: 'Endereço encontrado',
+          description: 'Os campos foram preenchidos automaticamente.',
+        });
+      }
+    } catch {
+      toast({
+        title: 'Erro ao buscar CEP',
+        description: 'Tente novamente mais tarde.',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsSearchingCep(false);
+    }
   };
 
   const handleChecklistChange = (id: string, checked: boolean) => {
@@ -60,7 +167,6 @@ export default function NewInspection() {
   };
 
   const handlePhotoUpload = () => {
-    // Simulate photo upload
     const newPhoto = `photo-${photos.length + 1}`;
     setPhotos(prev => [...prev, newPhoto]);
     toast({
@@ -73,10 +179,8 @@ export default function NewInspection() {
     e.preventDefault();
     setIsSubmitting(true);
 
-    // Simulate API call
     await new Promise(resolve => setTimeout(resolve, 1500));
 
-    // Create new vehicle
     const newVehicle = addVehicle({
       plate: formData.plate.toUpperCase(),
       brand: formData.brand,
@@ -85,16 +189,26 @@ export default function NewInspection() {
       color: formData.color,
       ownerId: user?.id || 'unknown',
       ownerName: formData.ownerName || user?.name || 'Proprietário',
+      ownerCpf: formData.ownerCpf,
+      ownerPhone: formData.ownerPhone,
+      ownerWhatsapp: formData.ownerWhatsapp,
+      ownerEmail: formData.ownerEmail,
+      ownerCep: formData.ownerCep,
+      ownerAddress: formData.ownerAddress,
+      ownerAddressNumber: formData.ownerAddressNumber,
+      ownerAddressComplement: formData.ownerAddressComplement,
+      ownerNeighborhood: formData.ownerNeighborhood,
+      ownerCity: formData.ownerCity,
+      ownerState: formData.ownerState,
       status: 'pending',
     });
 
-    // Create inspection linked to vehicle
     addInspection({
       vehicleId: newVehicle.id,
       vehicle: newVehicle,
       employeeId: user?.id || '2',
       employeeName: user?.name || 'Funcionário',
-      status: isEmployee ? 'pending' : 'pending',
+      status: 'pending',
       date: new Date().toISOString().split('T')[0],
       photos: photos,
       checklist: {
@@ -135,7 +249,7 @@ export default function NewInspection() {
             </CardHeader>
             <CardContent className="grid gap-4 md:grid-cols-2">
               <div className="space-y-2">
-                <Label htmlFor="plate">Placa</Label>
+                <Label htmlFor="plate">Placa *</Label>
                 <Input
                   id="plate"
                   name="plate"
@@ -147,7 +261,7 @@ export default function NewInspection() {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="brand">Marca</Label>
+                <Label htmlFor="brand">Marca *</Label>
                 <Input
                   id="brand"
                   name="brand"
@@ -158,7 +272,7 @@ export default function NewInspection() {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="model">Modelo</Label>
+                <Label htmlFor="model">Modelo *</Label>
                 <Input
                   id="model"
                   name="model"
@@ -169,7 +283,7 @@ export default function NewInspection() {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="year">Ano</Label>
+                <Label htmlFor="year">Ano *</Label>
                 <Input
                   id="year"
                   name="year"
@@ -181,7 +295,7 @@ export default function NewInspection() {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="color">Cor</Label>
+                <Label htmlFor="color">Cor *</Label>
                 <Input
                   id="color"
                   name="color"
@@ -191,19 +305,202 @@ export default function NewInspection() {
                   required
                 />
               </div>
-              {isEmployee && (
-                <div className="space-y-2">
-                  <Label htmlFor="ownerName">Nome do Proprietário</Label>
-                  <Input
-                    id="ownerName"
-                    name="ownerName"
-                    placeholder="Nome completo"
-                    value={formData.ownerName}
-                    onChange={handleInputChange}
-                    required
-                  />
+            </CardContent>
+          </Card>
+
+          {/* Customer Information */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <User className="h-5 w-5 text-primary" />
+                Dados do Cliente (Proprietário)
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              {/* Identification */}
+              <div>
+                <h4 className="text-sm font-medium text-muted-foreground mb-3 flex items-center gap-2">
+                  <User className="h-4 w-4" />
+                  Identificação
+                </h4>
+                <div className="grid gap-4 md:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label htmlFor="ownerName">Nome Completo *</Label>
+                    <Input
+                      id="ownerName"
+                      name="ownerName"
+                      placeholder="Nome completo do proprietário"
+                      value={formData.ownerName}
+                      onChange={handleInputChange}
+                      required
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="ownerCpf">CPF *</Label>
+                    <Input
+                      id="ownerCpf"
+                      name="ownerCpf"
+                      placeholder="000.000.000-00"
+                      value={formData.ownerCpf}
+                      onChange={handleFormattedInput}
+                      maxLength={14}
+                      required
+                    />
+                  </div>
                 </div>
-              )}
+              </div>
+
+              {/* Contact */}
+              <div>
+                <h4 className="text-sm font-medium text-muted-foreground mb-3 flex items-center gap-2">
+                  <Phone className="h-4 w-4" />
+                  Contato
+                </h4>
+                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                  <div className="space-y-2">
+                    <Label htmlFor="ownerPhone">Telefone *</Label>
+                    <Input
+                      id="ownerPhone"
+                      name="ownerPhone"
+                      placeholder="(00) 00000-0000"
+                      value={formData.ownerPhone}
+                      onChange={handleFormattedInput}
+                      maxLength={15}
+                      required
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="ownerWhatsapp">WhatsApp</Label>
+                    <Input
+                      id="ownerWhatsapp"
+                      name="ownerWhatsapp"
+                      placeholder="(00) 00000-0000"
+                      value={formData.ownerWhatsapp}
+                      onChange={handleFormattedInput}
+                      maxLength={15}
+                    />
+                  </div>
+                  <div className="space-y-2 md:col-span-2 lg:col-span-1">
+                    <Label htmlFor="ownerEmail">E-mail *</Label>
+                    <Input
+                      id="ownerEmail"
+                      name="ownerEmail"
+                      type="email"
+                      placeholder="email@exemplo.com"
+                      value={formData.ownerEmail}
+                      onChange={handleInputChange}
+                      required
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Address */}
+              <div>
+                <h4 className="text-sm font-medium text-muted-foreground mb-3 flex items-center gap-2">
+                  <MapPin className="h-4 w-4" />
+                  Endereço
+                </h4>
+                <div className="grid gap-4">
+                  <div className="grid gap-4 md:grid-cols-3">
+                    <div className="space-y-2">
+                      <Label htmlFor="ownerCep">CEP *</Label>
+                      <div className="flex gap-2">
+                        <Input
+                          id="ownerCep"
+                          name="ownerCep"
+                          placeholder="00000-000"
+                          value={formData.ownerCep}
+                          onChange={handleFormattedInput}
+                          maxLength={9}
+                          required
+                        />
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="icon"
+                          onClick={handleSearchCep}
+                          disabled={isSearchingCep}
+                          title="Buscar CEP"
+                        >
+                          <Search className={cn("h-4 w-4", isSearchingCep && "animate-spin")} />
+                        </Button>
+                      </div>
+                    </div>
+                    <div className="space-y-2 md:col-span-2">
+                      <Label htmlFor="ownerAddress">Endereço *</Label>
+                      <Input
+                        id="ownerAddress"
+                        name="ownerAddress"
+                        placeholder="Rua, Avenida..."
+                        value={formData.ownerAddress}
+                        onChange={handleInputChange}
+                        required
+                      />
+                    </div>
+                  </div>
+                  <div className="grid gap-4 md:grid-cols-3">
+                    <div className="space-y-2">
+                      <Label htmlFor="ownerAddressNumber">Número *</Label>
+                      <Input
+                        id="ownerAddressNumber"
+                        name="ownerAddressNumber"
+                        placeholder="123"
+                        value={formData.ownerAddressNumber}
+                        onChange={handleInputChange}
+                        required
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="ownerAddressComplement">Complemento</Label>
+                      <Input
+                        id="ownerAddressComplement"
+                        name="ownerAddressComplement"
+                        placeholder="Apt, Bloco..."
+                        value={formData.ownerAddressComplement}
+                        onChange={handleInputChange}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="ownerNeighborhood">Bairro *</Label>
+                      <Input
+                        id="ownerNeighborhood"
+                        name="ownerNeighborhood"
+                        placeholder="Bairro"
+                        value={formData.ownerNeighborhood}
+                        onChange={handleInputChange}
+                        required
+                      />
+                    </div>
+                  </div>
+                  <div className="grid gap-4 md:grid-cols-2">
+                    <div className="space-y-2">
+                      <Label htmlFor="ownerCity">Cidade *</Label>
+                      <Input
+                        id="ownerCity"
+                        name="ownerCity"
+                        placeholder="Cidade"
+                        value={formData.ownerCity}
+                        onChange={handleInputChange}
+                        required
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="ownerState">Estado *</Label>
+                      <Select value={formData.ownerState} onValueChange={handleStateChange}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Selecione o estado" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {brazilianStates.map(state => (
+                            <SelectItem key={state} value={state}>{state}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                </div>
+              </div>
             </CardContent>
           </Card>
 
