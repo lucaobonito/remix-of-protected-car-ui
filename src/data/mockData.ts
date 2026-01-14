@@ -5,8 +5,20 @@ export interface Vehicle {
   model: string;
   year: number;
   color: string;
+  // Dados do Proprietário
   ownerId: string;
   ownerName: string;
+  ownerCpf?: string;
+  ownerPhone?: string;
+  ownerWhatsapp?: string;
+  ownerEmail?: string;
+  ownerCep?: string;
+  ownerAddress?: string;
+  ownerAddressNumber?: string;
+  ownerAddressComplement?: string;
+  ownerNeighborhood?: string;
+  ownerCity?: string;
+  ownerState?: string;
   status: 'protected' | 'pending' | 'expired';
   createdAt: string;
 }
@@ -51,11 +63,46 @@ export interface MonthlyStats {
 }
 
 export const mockVehicles: Vehicle[] = [
-  { id: '1', plate: 'ABC-1234', brand: 'Toyota', model: 'Corolla', year: 2022, color: 'Prata', ownerId: '3', ownerName: 'João Oliveira', status: 'protected', createdAt: '2024-01-15' },
-  { id: '2', plate: 'DEF-5678', brand: 'Honda', model: 'Civic', year: 2021, color: 'Preto', ownerId: '4', ownerName: 'Maria Costa', status: 'protected', createdAt: '2024-02-20' },
-  { id: '3', plate: 'GHI-9012', brand: 'Volkswagen', model: 'Golf', year: 2023, color: 'Branco', ownerId: '5', ownerName: 'Pedro Lima', status: 'pending', createdAt: '2024-03-10' },
-  { id: '4', plate: 'JKL-3456', brand: 'Ford', model: 'Ka', year: 2020, color: 'Vermelho', ownerId: '6', ownerName: 'Ana Souza', status: 'protected', createdAt: '2024-01-25' },
-  { id: '5', plate: 'MNO-7890', brand: 'Chevrolet', model: 'Onix', year: 2022, color: 'Azul', ownerId: '7', ownerName: 'Carlos Mendes', status: 'expired', createdAt: '2023-11-05' },
+  { 
+    id: '1', plate: 'ABC-1234', brand: 'Toyota', model: 'Corolla', year: 2022, color: 'Prata', 
+    ownerId: '3', ownerName: 'João Oliveira', 
+    ownerCpf: '123.456.789-00', ownerPhone: '(11) 99999-1234', ownerWhatsapp: '(11) 99999-1234',
+    ownerEmail: 'joao.oliveira@email.com', ownerCep: '01310-100', ownerAddress: 'Av. Paulista',
+    ownerAddressNumber: '1000', ownerNeighborhood: 'Bela Vista', ownerCity: 'São Paulo', ownerState: 'SP',
+    status: 'protected', createdAt: '2024-01-15' 
+  },
+  { 
+    id: '2', plate: 'DEF-5678', brand: 'Honda', model: 'Civic', year: 2021, color: 'Preto', 
+    ownerId: '4', ownerName: 'Maria Costa', 
+    ownerCpf: '987.654.321-00', ownerPhone: '(21) 98888-5678', 
+    ownerEmail: 'maria.costa@email.com', ownerCep: '22041-080', ownerAddress: 'Rua Barata Ribeiro',
+    ownerAddressNumber: '500', ownerAddressComplement: 'Apt 301', ownerNeighborhood: 'Copacabana', ownerCity: 'Rio de Janeiro', ownerState: 'RJ',
+    status: 'protected', createdAt: '2024-02-20' 
+  },
+  { 
+    id: '3', plate: 'GHI-9012', brand: 'Volkswagen', model: 'Golf', year: 2023, color: 'Branco', 
+    ownerId: '5', ownerName: 'Pedro Lima', 
+    ownerCpf: '456.789.123-00', ownerPhone: '(31) 97777-9012',
+    ownerEmail: 'pedro.lima@email.com', ownerCep: '30130-000', ownerAddress: 'Av. Afonso Pena',
+    ownerAddressNumber: '200', ownerNeighborhood: 'Centro', ownerCity: 'Belo Horizonte', ownerState: 'MG',
+    status: 'pending', createdAt: '2024-03-10' 
+  },
+  { 
+    id: '4', plate: 'JKL-3456', brand: 'Ford', model: 'Ka', year: 2020, color: 'Vermelho', 
+    ownerId: '6', ownerName: 'Ana Souza', 
+    ownerCpf: '789.123.456-00', ownerPhone: '(41) 96666-3456', ownerWhatsapp: '(41) 96666-3456',
+    ownerEmail: 'ana.souza@email.com', ownerCep: '80010-000', ownerAddress: 'Rua XV de Novembro',
+    ownerAddressNumber: '750', ownerNeighborhood: 'Centro', ownerCity: 'Curitiba', ownerState: 'PR',
+    status: 'protected', createdAt: '2024-01-25' 
+  },
+  { 
+    id: '5', plate: 'MNO-7890', brand: 'Chevrolet', model: 'Onix', year: 2022, color: 'Azul', 
+    ownerId: '7', ownerName: 'Carlos Mendes', 
+    ownerCpf: '321.654.987-00', ownerPhone: '(51) 95555-7890',
+    ownerEmail: 'carlos.mendes@email.com', ownerCep: '90010-000', ownerAddress: 'Av. Borges de Medeiros',
+    ownerAddressNumber: '1500', ownerAddressComplement: 'Sala 10', ownerNeighborhood: 'Centro Histórico', ownerCity: 'Porto Alegre', ownerState: 'RS',
+    status: 'expired', createdAt: '2023-11-05' 
+  },
   { id: '6', plate: 'PQR-1234', brand: 'Hyundai', model: 'HB20', year: 2021, color: 'Cinza', ownerId: '8', ownerName: 'Fernanda Reis', status: 'protected', createdAt: '2024-04-01' },
   { id: '7', plate: 'STU-5678', brand: 'Fiat', model: 'Argo', year: 2023, color: 'Branco', ownerId: '9', ownerName: 'Roberto Alves', status: 'protected', createdAt: '2024-03-22' },
   { id: '8', plate: 'VWX-9012', brand: 'Renault', model: 'Kwid', year: 2022, color: 'Laranja', ownerId: '10', ownerName: 'Juliana Ferreira', status: 'pending', createdAt: '2024-05-15' },
