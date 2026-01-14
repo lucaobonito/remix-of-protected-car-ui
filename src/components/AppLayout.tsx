@@ -6,6 +6,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { AppSidebar } from './AppSidebar';
 import { ThemeToggle } from './ThemeToggle';
 import { NotificationsDropdown } from './NotificationsDropdown';
+import { NavigationHistoryDropdown } from './NavigationHistoryDropdown';
 import { Menu } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useIsBelowLg } from '@/hooks/use-mobile';
@@ -180,6 +181,7 @@ export function AppLayout({ children, title, breadcrumbs }: AppLayoutProps) {
             </div>
           </div>
           <div className="flex items-center gap-1 sm:gap-2">
+            <NavigationHistoryDropdown />
             <NotificationsDropdown />
             <ThemeToggle />
           </div>
