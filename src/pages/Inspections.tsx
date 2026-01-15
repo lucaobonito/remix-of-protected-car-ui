@@ -108,6 +108,19 @@ export default function Inspections() {
     return inspection.employeeId === user.id;
   };
 
+  // Check if user can edit a specific inspection
+  // Admins can edit any inspection
+  // Employees can edit inspections that are pending or in_progress, or their own inspections
+  const canEditInspection = (inspection: Inspection) => {
+    if (!user) return false;
+    if (user.role === 'admin') return true;
+    // Employees can edit their own inspections
+    if (inspection.employeeId === user.id) return true;
+    // Employees can edit any pending or in_progress inspection
+    if (['pending', 'in_progress'].includes(inspection.status)) return true;
+    return false;
+  };
+
   // Input masks
   const formatCpf = (value: string) => {
     const numbers = value.replace(/\D/g, '');
@@ -516,18 +529,20 @@ export default function Inspections() {
                             <Eye className="h-4 w-4 mr-2" />
                             Ver Detalhes
                           </DropdownMenuItem>
-                          {canChangeStatus(inspection) && (
+                          {canEditInspection(inspection) && (
                             <>
                               <DropdownMenuSeparator />
                               <DropdownMenuItem onClick={() => handleOpenEdit(inspection)}>
                                 <Pencil className="h-4 w-4 mr-2" />
                                 Editar Vistoria
                               </DropdownMenuItem>
-                              <DropdownMenuItem onClick={() => handleOpenStatusChange(inspection)}>
-                                <Edit className="h-4 w-4 mr-2" />
-                                Alterar Status
-                              </DropdownMenuItem>
                             </>
+                          )}
+                          {canChangeStatus(inspection) && (
+                            <DropdownMenuItem onClick={() => handleOpenStatusChange(inspection)}>
+                              <Edit className="h-4 w-4 mr-2" />
+                              Alterar Status
+                            </DropdownMenuItem>
                           )}
                         </DropdownMenuContent>
                       </DropdownMenu>
