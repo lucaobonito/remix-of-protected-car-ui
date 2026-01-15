@@ -651,11 +651,6 @@ export default function Vehicles() {
                       <Eye className="h-4 w-4" />
                       Ver Detalhes
                     </Button>
-                    {vehicle.status === 'pending' && (
-                      <Button variant="accent" size="sm" className="flex-1">
-                        Vistoriar
-                      </Button>
-                    )}
                   </div>
                 </div>
               </CardContent>
