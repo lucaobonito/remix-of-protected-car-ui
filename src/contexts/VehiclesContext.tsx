@@ -4,12 +4,19 @@ import { useAudit } from '@/contexts/AuditContext';
 
 export type VehicleUpdateData = Partial<Omit<Vehicle, 'id' | 'createdAt'>>;
 
+export type InspectionUpdateData = {
+  vehicle?: Partial<Omit<Vehicle, 'id' | 'createdAt'>>;
+  checklist?: Inspection['checklist'];
+  notes?: string;
+};
+
 interface VehiclesContextType {
   vehicles: Vehicle[];
   inspections: Inspection[];
   addVehicle: (vehicle: Omit<Vehicle, 'id' | 'createdAt'>) => Vehicle;
   addInspection: (inspection: Omit<Inspection, 'id'>) => Inspection;
   updateVehicle: (vehicleId: string, data: VehicleUpdateData) => void;
+  updateInspection: (inspectionId: string, data: InspectionUpdateData) => void;
   updateInspectionStatus: (
     inspectionId: string, 
     newStatus: Inspection['status'],
@@ -104,6 +111,43 @@ export function VehiclesProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  const updateInspection = (inspectionId: string, data: InspectionUpdateData) => {
+    const originalInspection = inspections.find(i => i.id === inspectionId);
+    
+    setInspections(prev =>
+      prev.map(inspection => {
+        if (inspection.id !== inspectionId) return inspection;
+        
+        const updatedVehicle = data.vehicle 
+          ? { ...inspection.vehicle, ...data.vehicle }
+          : inspection.vehicle;
+        
+        return {
+          ...inspection,
+          vehicle: updatedVehicle,
+          checklist: data.checklist ?? inspection.checklist,
+          notes: data.notes ?? inspection.notes,
+        };
+      })
+    );
+    
+    // Also update the vehicle in the vehicles array if vehicle data was updated
+    if (data.vehicle && originalInspection) {
+      setVehicles(prev =>
+        prev.map(vehicle =>
+          vehicle.id === originalInspection.vehicleId
+            ? { ...vehicle, ...data.vehicle }
+            : vehicle
+        )
+      );
+    }
+    
+    // Audit log
+    if (addAuditLog && originalInspection) {
+      addAuditLog('UPDATE', 'INSPECTION', inspectionId, `Editou vistoria #${inspectionId} (${originalInspection.vehicle.plate})`);
+    }
+  };
+
   const updateInspectionStatus = (
     inspectionId: string, 
     newStatus: Inspection['status'],
@@ -192,7 +236,7 @@ export function VehiclesProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <VehiclesContext.Provider value={{ vehicles, inspections, addVehicle, addInspection, updateVehicle, updateInspectionStatus, getEmployeeStats, getEmployeeStatsForCurrentMonth }}>
+    <VehiclesContext.Provider value={{ vehicles, inspections, addVehicle, addInspection, updateVehicle, updateInspection, updateInspectionStatus, getEmployeeStats, getEmployeeStatsForCurrentMonth }}>
       {children}
     </VehiclesContext.Provider>
   );

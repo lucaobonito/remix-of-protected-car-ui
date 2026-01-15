@@ -8,7 +8,9 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
-import { Search, Filter, Eye, Calendar, User, CheckCircle, XCircle, Clock, AlertCircle, MoreVertical, Edit, History } from 'lucide-react';
+import { Checkbox } from '@/components/ui/checkbox';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { Search, Filter, Eye, Calendar, User, CheckCircle, XCircle, Clock, AlertCircle, MoreVertical, Edit, History, Pencil, MapPin, Loader2 } from 'lucide-react';
 import { useVehicles } from '@/contexts/VehiclesContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
@@ -30,8 +32,46 @@ import {
 import { Separator } from '@/components/ui/separator';
 import { Inspection } from '@/data/mockData';
 
+const brazilianStates = [
+  'AC', 'AL', 'AP', 'AM', 'BA', 'CE', 'DF', 'ES', 'GO', 'MA', 'MT', 'MS', 'MG',
+  'PA', 'PB', 'PR', 'PE', 'PI', 'RJ', 'RN', 'RS', 'RO', 'RR', 'SC', 'SP', 'SE', 'TO'
+];
+
+interface EditInspectionForm {
+  // Vehicle data
+  plate: string;
+  brand: string;
+  model: string;
+  year: string;
+  color: string;
+  // Owner data
+  ownerName: string;
+  ownerCpf: string;
+  ownerPhone: string;
+  ownerWhatsapp: string;
+  ownerEmail: string;
+  ownerCep: string;
+  ownerAddress: string;
+  ownerAddressNumber: string;
+  ownerAddressComplement: string;
+  ownerNeighborhood: string;
+  ownerCity: string;
+  ownerState: string;
+  // Checklist
+  checklist: {
+    exterior: boolean;
+    interior: boolean;
+    engine: boolean;
+    tires: boolean;
+    documents: boolean;
+    lights: boolean;
+  };
+  // Notes
+  notes: string;
+}
+
 export default function Inspections() {
-  const { inspections, updateInspectionStatus } = useVehicles();
+  const { inspections, updateInspectionStatus, updateInspection } = useVehicles();
   const { user } = useAuth();
   const { toast } = useToast();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -48,11 +88,15 @@ export default function Inspections() {
     if (employeeFilter !== 'all') params.set('employee', employeeFilter);
     setSearchParams(params, { replace: true });
   }, [statusFilter, employeeFilter, setSearchParams]);
+  
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
   const [isStatusChangeOpen, setIsStatusChangeOpen] = useState(false);
+  const [isEditOpen, setIsEditOpen] = useState(false);
   const [selectedInspection, setSelectedInspection] = useState<Inspection | null>(null);
   const [newStatus, setNewStatus] = useState<Inspection['status']>('pending');
   const [statusNotes, setStatusNotes] = useState('');
+  const [editForm, setEditForm] = useState<EditInspectionForm | null>(null);
+  const [isLoadingCep, setIsLoadingCep] = useState(false);
 
   const employees = [...new Set(inspections.map(i => i.employeeName))];
 
@@ -62,6 +106,88 @@ export default function Inspections() {
     if (!user) return false;
     if (user.role === 'admin') return true;
     return inspection.employeeId === user.id;
+  };
+
+  // Input masks
+  const formatCpf = (value: string) => {
+    const numbers = value.replace(/\D/g, '');
+    if (numbers.length <= 11) {
+      return numbers
+        .replace(/(\d{3})(\d)/, '$1.$2')
+        .replace(/(\d{3})(\d)/, '$1.$2')
+        .replace(/(\d{3})(\d{1,2})$/, '$1-$2');
+    }
+    return value.slice(0, 14);
+  };
+
+  const formatPhone = (value: string) => {
+    const numbers = value.replace(/\D/g, '');
+    if (numbers.length <= 11) {
+      return numbers
+        .replace(/(\d{2})(\d)/, '($1) $2')
+        .replace(/(\d{5})(\d)/, '$1-$2');
+    }
+    return value.slice(0, 15);
+  };
+
+  const formatCep = (value: string) => {
+    const numbers = value.replace(/\D/g, '');
+    if (numbers.length <= 8) {
+      return numbers.replace(/(\d{5})(\d)/, '$1-$2');
+    }
+    return value.slice(0, 9);
+  };
+
+  const handleCepLookup = async (cep: string) => {
+    const cleanCep = cep.replace(/\D/g, '');
+    if (cleanCep.length !== 8) return;
+
+    setIsLoadingCep(true);
+    try {
+      const response = await fetch(`https://viacep.com.br/ws/${cleanCep}/json/`);
+      const data = await response.json();
+      
+      if (!data.erro && editForm) {
+        setEditForm({
+          ...editForm,
+          ownerAddress: data.logradouro || '',
+          ownerNeighborhood: data.bairro || '',
+          ownerCity: data.localidade || '',
+          ownerState: data.uf || '',
+        });
+      }
+    } catch (error) {
+      console.error('Erro ao buscar CEP:', error);
+    } finally {
+      setIsLoadingCep(false);
+    }
+  };
+
+  const handleEditFormChange = (field: keyof EditInspectionForm, value: string | boolean) => {
+    if (!editForm) return;
+    
+    let formattedValue = value;
+    
+    if (field === 'ownerCpf' && typeof value === 'string') {
+      formattedValue = formatCpf(value);
+    } else if ((field === 'ownerPhone' || field === 'ownerWhatsapp') && typeof value === 'string') {
+      formattedValue = formatPhone(value);
+    } else if (field === 'ownerCep' && typeof value === 'string') {
+      formattedValue = formatCep(value);
+      if (value.replace(/\D/g, '').length === 8) {
+        handleCepLookup(value);
+      }
+    }
+    
+    setEditForm({ ...editForm, [field]: formattedValue });
+  };
+
+  const handleChecklistChange = (field: keyof EditInspectionForm['checklist'], value: boolean) => {
+    if (!editForm) return;
+    setEditForm({
+      ...editForm,
+      checklist: { ...editForm.checklist, [field]: value }
+    });
   };
 
   const filteredInspections = inspections.filter(inspection => {
@@ -138,6 +264,89 @@ export default function Inspections() {
     setNewStatus(inspection.status);
     setStatusNotes('');
     setIsStatusChangeOpen(true);
+  };
+
+  const handleOpenEdit = (inspection: Inspection) => {
+    setSelectedInspection(inspection);
+    setEditForm({
+      plate: inspection.vehicle.plate,
+      brand: inspection.vehicle.brand,
+      model: inspection.vehicle.model,
+      year: String(inspection.vehicle.year),
+      color: inspection.vehicle.color,
+      ownerName: inspection.vehicle.ownerName || '',
+      ownerCpf: inspection.vehicle.ownerCpf || '',
+      ownerPhone: inspection.vehicle.ownerPhone || '',
+      ownerWhatsapp: inspection.vehicle.ownerWhatsapp || '',
+      ownerEmail: inspection.vehicle.ownerEmail || '',
+      ownerCep: inspection.vehicle.ownerCep || '',
+      ownerAddress: inspection.vehicle.ownerAddress || '',
+      ownerAddressNumber: inspection.vehicle.ownerAddressNumber || '',
+      ownerAddressComplement: inspection.vehicle.ownerAddressComplement || '',
+      ownerNeighborhood: inspection.vehicle.ownerNeighborhood || '',
+      ownerCity: inspection.vehicle.ownerCity || '',
+      ownerState: inspection.vehicle.ownerState || '',
+      checklist: { ...inspection.checklist },
+      notes: inspection.notes || '',
+    });
+    setIsEditOpen(true);
+  };
+
+  const handleSaveEdit = () => {
+    if (!selectedInspection || !editForm) return;
+
+    // Validation
+    if (!editForm.plate.trim() || !editForm.brand.trim() || !editForm.model.trim() || 
+        !editForm.color.trim() || !editForm.ownerName.trim() || !editForm.ownerPhone.trim()) {
+      toast({
+        title: "Campos obrigatórios",
+        description: "Preencha todos os campos obrigatórios.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    const yearNum = parseInt(editForm.year);
+    if (isNaN(yearNum) || yearNum < 1900 || yearNum > new Date().getFullYear() + 1) {
+      toast({
+        title: "Ano inválido",
+        description: "Informe um ano válido.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    updateInspection(selectedInspection.id, {
+      vehicle: {
+        plate: editForm.plate.toUpperCase(),
+        brand: editForm.brand,
+        model: editForm.model,
+        year: yearNum,
+        color: editForm.color,
+        ownerName: editForm.ownerName,
+        ownerCpf: editForm.ownerCpf,
+        ownerPhone: editForm.ownerPhone,
+        ownerWhatsapp: editForm.ownerWhatsapp,
+        ownerEmail: editForm.ownerEmail,
+        ownerCep: editForm.ownerCep,
+        ownerAddress: editForm.ownerAddress,
+        ownerAddressNumber: editForm.ownerAddressNumber,
+        ownerAddressComplement: editForm.ownerAddressComplement,
+        ownerNeighborhood: editForm.ownerNeighborhood,
+        ownerCity: editForm.ownerCity,
+        ownerState: editForm.ownerState,
+      },
+      checklist: editForm.checklist,
+      notes: editForm.notes,
+    });
+
+    setIsEditOpen(false);
+    toast({
+      title: "Vistoria atualizada",
+      description: `Vistoria #${selectedInspection.id} foi atualizada com sucesso.`
+    });
+    setSelectedInspection(null);
+    setEditForm(null);
   };
 
   const handleStatusChange = () => {
@@ -310,6 +519,10 @@ export default function Inspections() {
                           {canChangeStatus(inspection) && (
                             <>
                               <DropdownMenuSeparator />
+                              <DropdownMenuItem onClick={() => handleOpenEdit(inspection)}>
+                                <Pencil className="h-4 w-4 mr-2" />
+                                Editar Vistoria
+                              </DropdownMenuItem>
                               <DropdownMenuItem onClick={() => handleOpenStatusChange(inspection)}>
                                 <Edit className="h-4 w-4 mr-2" />
                                 Alterar Status
@@ -545,6 +758,291 @@ export default function Inspections() {
               disabled={newStatus === selectedInspection?.status}
             >
               Confirmar Alteração
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      {/* Edit Inspection Dialog */}
+      <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>
+        <DialogContent className="sm:max-w-2xl max-h-[90vh]">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-3">
+              <Pencil className="h-5 w-5" />
+              Editar Vistoria #{selectedInspection?.id}
+            </DialogTitle>
+            <DialogDescription>
+              Edite os dados da vistoria. Campos com * são obrigatórios.
+            </DialogDescription>
+          </DialogHeader>
+          {editForm && (
+            <ScrollArea className="max-h-[60vh] pr-4">
+              <div className="space-y-6 py-4">
+                {/* Vehicle Data */}
+                <div>
+                  <h4 className="font-medium text-sm text-muted-foreground mb-3 flex items-center gap-2">
+                    🚗 DADOS DO VEÍCULO
+                  </h4>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="edit-plate">Placa *</Label>
+                      <Input
+                        id="edit-plate"
+                        placeholder="ABC-1234"
+                        value={editForm.plate}
+                        onChange={(e) => handleEditFormChange('plate', e.target.value.toUpperCase())}
+                        maxLength={8}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="edit-brand">Marca *</Label>
+                      <Input
+                        id="edit-brand"
+                        placeholder="Toyota"
+                        value={editForm.brand}
+                        onChange={(e) => handleEditFormChange('brand', e.target.value)}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="edit-model">Modelo *</Label>
+                      <Input
+                        id="edit-model"
+                        placeholder="Corolla"
+                        value={editForm.model}
+                        onChange={(e) => handleEditFormChange('model', e.target.value)}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="edit-year">Ano *</Label>
+                      <Input
+                        id="edit-year"
+                        type="number"
+                        placeholder="2024"
+                        value={editForm.year}
+                        onChange={(e) => handleEditFormChange('year', e.target.value)}
+                        min={1900}
+                        max={new Date().getFullYear() + 1}
+                      />
+                    </div>
+                    <div className="col-span-2 space-y-2">
+                      <Label htmlFor="edit-color">Cor *</Label>
+                      <Input
+                        id="edit-color"
+                        placeholder="Prata"
+                        value={editForm.color}
+                        onChange={(e) => handleEditFormChange('color', e.target.value)}
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <Separator />
+
+                {/* Owner Data */}
+                <div>
+                  <h4 className="font-medium text-sm text-muted-foreground mb-3 flex items-center gap-2">
+                    👤 DADOS DO CLIENTE
+                  </h4>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="col-span-2 space-y-2">
+                      <Label htmlFor="edit-ownerName">Nome Completo *</Label>
+                      <Input
+                        id="edit-ownerName"
+                        placeholder="João da Silva"
+                        value={editForm.ownerName}
+                        onChange={(e) => handleEditFormChange('ownerName', e.target.value)}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="edit-ownerCpf">CPF</Label>
+                      <Input
+                        id="edit-ownerCpf"
+                        placeholder="000.000.000-00"
+                        value={editForm.ownerCpf}
+                        onChange={(e) => handleEditFormChange('ownerCpf', e.target.value)}
+                        maxLength={14}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="edit-ownerEmail">E-mail</Label>
+                      <Input
+                        id="edit-ownerEmail"
+                        type="email"
+                        placeholder="cliente@email.com"
+                        value={editForm.ownerEmail}
+                        onChange={(e) => handleEditFormChange('ownerEmail', e.target.value)}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="edit-ownerPhone">Telefone *</Label>
+                      <Input
+                        id="edit-ownerPhone"
+                        placeholder="(00) 00000-0000"
+                        value={editForm.ownerPhone}
+                        onChange={(e) => handleEditFormChange('ownerPhone', e.target.value)}
+                        maxLength={15}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="edit-ownerWhatsapp">WhatsApp</Label>
+                      <Input
+                        id="edit-ownerWhatsapp"
+                        placeholder="(00) 00000-0000"
+                        value={editForm.ownerWhatsapp}
+                        onChange={(e) => handleEditFormChange('ownerWhatsapp', e.target.value)}
+                        maxLength={15}
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <Separator />
+
+                {/* Address */}
+                <div>
+                  <h4 className="font-medium text-sm text-muted-foreground mb-3 flex items-center gap-2">
+                    <MapPin className="h-4 w-4" />
+                    ENDEREÇO
+                  </h4>
+                  <div className="grid grid-cols-3 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="edit-ownerCep">CEP</Label>
+                      <div className="relative">
+                        <Input
+                          id="edit-ownerCep"
+                          placeholder="00000-000"
+                          value={editForm.ownerCep}
+                          onChange={(e) => handleEditFormChange('ownerCep', e.target.value)}
+                          maxLength={9}
+                        />
+                        {isLoadingCep && (
+                          <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin text-muted-foreground" />
+                        )}
+                      </div>
+                    </div>
+                    <div className="col-span-2 space-y-2">
+                      <Label htmlFor="edit-ownerAddress">Endereço</Label>
+                      <Input
+                        id="edit-ownerAddress"
+                        placeholder="Rua, Avenida..."
+                        value={editForm.ownerAddress}
+                        onChange={(e) => handleEditFormChange('ownerAddress', e.target.value)}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="edit-ownerAddressNumber">Número</Label>
+                      <Input
+                        id="edit-ownerAddressNumber"
+                        placeholder="123"
+                        value={editForm.ownerAddressNumber}
+                        onChange={(e) => handleEditFormChange('ownerAddressNumber', e.target.value)}
+                      />
+                    </div>
+                    <div className="col-span-2 space-y-2">
+                      <Label htmlFor="edit-ownerAddressComplement">Complemento</Label>
+                      <Input
+                        id="edit-ownerAddressComplement"
+                        placeholder="Apt, Bloco..."
+                        value={editForm.ownerAddressComplement}
+                        onChange={(e) => handleEditFormChange('ownerAddressComplement', e.target.value)}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="edit-ownerNeighborhood">Bairro</Label>
+                      <Input
+                        id="edit-ownerNeighborhood"
+                        placeholder="Centro"
+                        value={editForm.ownerNeighborhood}
+                        onChange={(e) => handleEditFormChange('ownerNeighborhood', e.target.value)}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="edit-ownerCity">Cidade</Label>
+                      <Input
+                        id="edit-ownerCity"
+                        placeholder="São Paulo"
+                        value={editForm.ownerCity}
+                        onChange={(e) => handleEditFormChange('ownerCity', e.target.value)}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="edit-ownerState">Estado</Label>
+                      <Select 
+                        value={editForm.ownerState} 
+                        onValueChange={(value) => handleEditFormChange('ownerState', value)}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="UF" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {brazilianStates.map(state => (
+                            <SelectItem key={state} value={state}>{state}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                </div>
+
+                <Separator />
+
+                {/* Checklist */}
+                <div>
+                  <h4 className="font-medium text-sm text-muted-foreground mb-3">✓ CHECKLIST</h4>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+                    {Object.entries(editForm.checklist).map(([key, value]) => {
+                      const labels: Record<string, string> = {
+                        exterior: 'Exterior',
+                        interior: 'Interior',
+                        engine: 'Motor',
+                        tires: 'Pneus',
+                        documents: 'Documentos',
+                        lights: 'Iluminação'
+                      };
+                      return (
+                        <div key={key} className="flex items-center space-x-2">
+                          <Checkbox
+                            id={`edit-${key}`}
+                            checked={value}
+                            onCheckedChange={(checked) => 
+                              handleChecklistChange(key as keyof EditInspectionForm['checklist'], checked as boolean)
+                            }
+                          />
+                          <Label htmlFor={`edit-${key}`} className="cursor-pointer">
+                            {labels[key] || key}
+                          </Label>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                <Separator />
+
+                {/* Notes */}
+                <div>
+                  <h4 className="font-medium text-sm text-muted-foreground mb-3">📝 OBSERVAÇÕES</h4>
+                  <Textarea
+                    placeholder="Adicione observações sobre a vistoria..."
+                    value={editForm.notes}
+                    onChange={(e) => handleEditFormChange('notes', e.target.value)}
+                    rows={3}
+                  />
+                </div>
+
+                {/* Read-only info */}
+                <div className="p-3 rounded-lg bg-muted/50 text-sm text-muted-foreground">
+                  <p><strong>Data:</strong> {selectedInspection ? formatDate(selectedInspection.date) : ''}</p>
+                  <p><strong>Vistoriador:</strong> {selectedInspection?.employeeName}</p>
+                </div>
+              </div>
+            </ScrollArea>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsEditOpen(false)}>
+              Cancelar
+            </Button>
+            <Button onClick={handleSaveEdit}>
+              Salvar Alterações
             </Button>
           </DialogFooter>
         </DialogContent>
