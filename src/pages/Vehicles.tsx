@@ -8,7 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Separator } from '@/components/ui/separator';
-import { Search, Car, Plus, Eye, Shield, AlertCircle, Clock, Calendar, Palette, User, CheckCircle, XCircle, Loader2, Pencil, Save, X } from 'lucide-react';
+import { Search, Car, Plus, Eye, Shield, AlertCircle, Clock, Calendar, Palette, User, CheckCircle, XCircle, Loader2, Pencil, Save, X, Phone, Mail, MapPin } from 'lucide-react';
 import { useVehicles, VehicleUpdateData } from '@/contexts/VehiclesContext';
 import { Vehicle } from '@/data/mockData';
 import { useAuth } from '@/contexts/AuthContext';
@@ -20,9 +20,26 @@ interface EditFormState {
   model: string;
   year: number;
   color: string;
-  ownerName: string;
   status: 'protected' | 'pending' | 'expired';
+  // Dados do Cliente
+  ownerName: string;
+  ownerCpf: string;
+  ownerPhone: string;
+  ownerWhatsapp: string;
+  ownerEmail: string;
+  ownerCep: string;
+  ownerAddress: string;
+  ownerAddressNumber: string;
+  ownerAddressComplement: string;
+  ownerNeighborhood: string;
+  ownerCity: string;
+  ownerState: string;
 }
+
+const brazilianStates = [
+  'AC', 'AL', 'AP', 'AM', 'BA', 'CE', 'DF', 'ES', 'GO', 'MA', 'MT', 'MS', 'MG',
+  'PA', 'PB', 'PR', 'PE', 'PI', 'RJ', 'RN', 'RS', 'RO', 'RR', 'SC', 'SP', 'SE', 'TO'
+];
 
 export default function Vehicles() {
   const { vehicles, inspections, updateVehicle } = useVehicles();
@@ -33,8 +50,68 @@ export default function Vehicles() {
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [editForm, setEditForm] = useState<EditFormState | null>(null);
+  const [isSearchingCep, setIsSearchingCep] = useState(false);
 
   const canEdit = user?.role === 'admin';
+
+  // Formatadores
+  const formatCpf = (value: string) => {
+    return value
+      .replace(/\D/g, '')
+      .replace(/(\d{3})(\d)/, '$1.$2')
+      .replace(/(\d{3})(\d)/, '$1.$2')
+      .replace(/(\d{3})(\d{1,2})/, '$1-$2')
+      .replace(/(-\d{2})\d+?$/, '$1');
+  };
+
+  const formatPhone = (value: string) => {
+    return value
+      .replace(/\D/g, '')
+      .replace(/(\d{2})(\d)/, '($1) $2')
+      .replace(/(\d{5})(\d)/, '$1-$2')
+      .replace(/(-\d{4})\d+?$/, '$1');
+  };
+
+  const formatCep = (value: string) => {
+    return value
+      .replace(/\D/g, '')
+      .replace(/(\d{5})(\d)/, '$1-$2')
+      .replace(/(-\d{3})\d+?$/, '$1');
+  };
+
+  const handleSearchCep = async () => {
+    if (!editForm) return;
+    
+    const cep = editForm.ownerCep.replace(/\D/g, '');
+    if (cep.length !== 8) {
+      toast.error('CEP inválido. Digite 8 números.');
+      return;
+    }
+
+    setIsSearchingCep(true);
+    try {
+      const response = await fetch(`https://viacep.com.br/ws/${cep}/json/`);
+      const data = await response.json();
+
+      if (data.erro) {
+        toast.error('CEP não encontrado');
+        return;
+      }
+
+      setEditForm(prev => prev ? {
+        ...prev,
+        ownerAddress: data.logradouro || '',
+        ownerNeighborhood: data.bairro || '',
+        ownerCity: data.localidade || '',
+        ownerState: data.uf || '',
+      } : null);
+      toast.success('Endereço encontrado!');
+    } catch {
+      toast.error('Erro ao buscar CEP');
+    } finally {
+      setIsSearchingCep(false);
+    }
+  };
 
   const handleViewDetails = (vehicle: Vehicle) => {
     setSelectedVehicle(vehicle);
@@ -55,8 +132,20 @@ export default function Vehicles() {
         model: selectedVehicle.model,
         year: selectedVehicle.year,
         color: selectedVehicle.color,
-        ownerName: selectedVehicle.ownerName,
         status: selectedVehicle.status,
+        // Dados do Cliente
+        ownerName: selectedVehicle.ownerName || '',
+        ownerCpf: selectedVehicle.ownerCpf || '',
+        ownerPhone: selectedVehicle.ownerPhone || '',
+        ownerWhatsapp: selectedVehicle.ownerWhatsapp || '',
+        ownerEmail: selectedVehicle.ownerEmail || '',
+        ownerCep: selectedVehicle.ownerCep || '',
+        ownerAddress: selectedVehicle.ownerAddress || '',
+        ownerAddressNumber: selectedVehicle.ownerAddressNumber || '',
+        ownerAddressComplement: selectedVehicle.ownerAddressComplement || '',
+        ownerNeighborhood: selectedVehicle.ownerNeighborhood || '',
+        ownerCity: selectedVehicle.ownerCity || '',
+        ownerState: selectedVehicle.ownerState || '',
       });
       setIsEditing(true);
     }
@@ -70,7 +159,7 @@ export default function Vehicles() {
   const handleSaveEdit = () => {
     if (!selectedVehicle || !editForm) return;
 
-    // Validation
+    // Validação de campos obrigatórios do veículo
     if (!editForm.plate.trim() || !editForm.brand.trim() || !editForm.model.trim() || 
         !editForm.color.trim() || !editForm.ownerName.trim()) {
       toast.error('Preencha todos os campos obrigatórios');
@@ -82,14 +171,31 @@ export default function Vehicles() {
       return;
     }
 
+    // Validação de e-mail se preenchido
+    if (editForm.ownerEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(editForm.ownerEmail)) {
+      toast.error('E-mail inválido');
+      return;
+    }
+
     const updateData: VehicleUpdateData = {
       plate: editForm.plate.toUpperCase(),
       brand: editForm.brand,
       model: editForm.model,
       year: editForm.year,
       color: editForm.color,
-      ownerName: editForm.ownerName,
       status: editForm.status,
+      ownerName: editForm.ownerName,
+      ownerCpf: editForm.ownerCpf,
+      ownerPhone: editForm.ownerPhone,
+      ownerWhatsapp: editForm.ownerWhatsapp,
+      ownerEmail: editForm.ownerEmail,
+      ownerCep: editForm.ownerCep,
+      ownerAddress: editForm.ownerAddress,
+      ownerAddressNumber: editForm.ownerAddressNumber,
+      ownerAddressComplement: editForm.ownerAddressComplement,
+      ownerNeighborhood: editForm.ownerNeighborhood,
+      ownerCity: editForm.ownerCity,
+      ownerState: editForm.ownerState,
     };
 
     updateVehicle(selectedVehicle.id, updateData);
@@ -173,6 +279,257 @@ export default function Vehicles() {
       default:
         return <Car className="h-5 w-5" />;
     }
+  };
+
+  // Renderiza a seção do proprietário no modo visualização
+  const renderOwnerViewSection = () => {
+    if (!selectedVehicle) return null;
+
+    const hasContactInfo = selectedVehicle.ownerPhone || selectedVehicle.ownerEmail;
+    const hasAddressInfo = selectedVehicle.ownerAddress || selectedVehicle.ownerCity;
+
+    return (
+      <div className="space-y-4">
+        {/* Identificação */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="flex items-start gap-3 p-3 rounded-lg bg-muted/50">
+            <User className="h-5 w-5 text-muted-foreground mt-0.5" />
+            <div>
+              <p className="text-sm text-muted-foreground">Nome</p>
+              <p className="font-medium">{selectedVehicle.ownerName}</p>
+            </div>
+          </div>
+          {selectedVehicle.ownerCpf && (
+            <div className="flex items-start gap-3 p-3 rounded-lg bg-muted/50">
+              <User className="h-5 w-5 text-muted-foreground mt-0.5" />
+              <div>
+                <p className="text-sm text-muted-foreground">CPF</p>
+                <p className="font-medium">{selectedVehicle.ownerCpf}</p>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Contato */}
+        {hasContactInfo && (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {selectedVehicle.ownerPhone && (
+              <div className="flex items-start gap-3 p-3 rounded-lg bg-muted/50">
+                <Phone className="h-5 w-5 text-muted-foreground mt-0.5" />
+                <div>
+                  <p className="text-sm text-muted-foreground">Telefone</p>
+                  <p className="font-medium">{selectedVehicle.ownerPhone}</p>
+                </div>
+              </div>
+            )}
+            {selectedVehicle.ownerWhatsapp && (
+              <div className="flex items-start gap-3 p-3 rounded-lg bg-muted/50">
+                <Phone className="h-5 w-5 text-muted-foreground mt-0.5" />
+                <div>
+                  <p className="text-sm text-muted-foreground">WhatsApp</p>
+                  <p className="font-medium">{selectedVehicle.ownerWhatsapp}</p>
+                </div>
+              </div>
+            )}
+            {selectedVehicle.ownerEmail && (
+              <div className="flex items-start gap-3 p-3 rounded-lg bg-muted/50 md:col-span-2">
+                <Mail className="h-5 w-5 text-muted-foreground mt-0.5" />
+                <div>
+                  <p className="text-sm text-muted-foreground">E-mail</p>
+                  <p className="font-medium">{selectedVehicle.ownerEmail}</p>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Endereço */}
+        {hasAddressInfo && (
+          <div className="flex items-start gap-3 p-3 rounded-lg bg-muted/50">
+            <MapPin className="h-5 w-5 text-muted-foreground mt-0.5" />
+            <div>
+              <p className="text-sm text-muted-foreground">Endereço</p>
+              <p className="font-medium">
+                {selectedVehicle.ownerAddress}
+                {selectedVehicle.ownerAddressNumber && `, ${selectedVehicle.ownerAddressNumber}`}
+                {selectedVehicle.ownerAddressComplement && ` - ${selectedVehicle.ownerAddressComplement}`}
+              </p>
+              <p className="text-sm text-muted-foreground">
+                {selectedVehicle.ownerNeighborhood}
+                {selectedVehicle.ownerCity && ` - ${selectedVehicle.ownerCity}`}
+                {selectedVehicle.ownerState && `/${selectedVehicle.ownerState}`}
+                {selectedVehicle.ownerCep && ` • CEP: ${selectedVehicle.ownerCep}`}
+              </p>
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  // Renderiza a seção do proprietário no modo edição
+  const renderOwnerEditSection = () => {
+    if (!editForm) return null;
+
+    return (
+      <div className="space-y-6">
+        {/* Identificação */}
+        <div>
+          <h5 className="text-sm font-medium text-muted-foreground mb-3">Identificação</h5>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="ownerName">Nome Completo *</Label>
+              <Input
+                id="ownerName"
+                value={editForm.ownerName}
+                onChange={(e) => setEditForm({ ...editForm, ownerName: e.target.value })}
+                placeholder="Nome completo"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="ownerCpf">CPF</Label>
+              <Input
+                id="ownerCpf"
+                value={editForm.ownerCpf}
+                onChange={(e) => setEditForm({ ...editForm, ownerCpf: formatCpf(e.target.value) })}
+                placeholder="000.000.000-00"
+                maxLength={14}
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* Contato */}
+        <div>
+          <h5 className="text-sm font-medium text-muted-foreground mb-3">Contato</h5>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="ownerPhone">Telefone</Label>
+              <Input
+                id="ownerPhone"
+                value={editForm.ownerPhone}
+                onChange={(e) => setEditForm({ ...editForm, ownerPhone: formatPhone(e.target.value) })}
+                placeholder="(00) 00000-0000"
+                maxLength={15}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="ownerWhatsapp">WhatsApp</Label>
+              <Input
+                id="ownerWhatsapp"
+                value={editForm.ownerWhatsapp}
+                onChange={(e) => setEditForm({ ...editForm, ownerWhatsapp: formatPhone(e.target.value) })}
+                placeholder="(00) 00000-0000"
+                maxLength={15}
+              />
+            </div>
+            <div className="space-y-2 md:col-span-2">
+              <Label htmlFor="ownerEmail">E-mail</Label>
+              <Input
+                id="ownerEmail"
+                type="email"
+                value={editForm.ownerEmail}
+                onChange={(e) => setEditForm({ ...editForm, ownerEmail: e.target.value })}
+                placeholder="email@exemplo.com"
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* Endereço */}
+        <div>
+          <h5 className="text-sm font-medium text-muted-foreground mb-3">Endereço</h5>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="ownerCep">CEP</Label>
+              <div className="flex gap-2">
+                <Input
+                  id="ownerCep"
+                  value={editForm.ownerCep}
+                  onChange={(e) => setEditForm({ ...editForm, ownerCep: formatCep(e.target.value) })}
+                  placeholder="00000-000"
+                  maxLength={9}
+                />
+                <Button 
+                  type="button" 
+                  variant="outline" 
+                  size="icon"
+                  onClick={handleSearchCep}
+                  disabled={isSearchingCep}
+                >
+                  {isSearchingCep ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Search className="h-4 w-4" />
+                  )}
+                </Button>
+              </div>
+            </div>
+            <div className="space-y-2 md:col-span-2">
+              <Label htmlFor="ownerAddress">Endereço</Label>
+              <Input
+                id="ownerAddress"
+                value={editForm.ownerAddress}
+                onChange={(e) => setEditForm({ ...editForm, ownerAddress: e.target.value })}
+                placeholder="Rua, Avenida..."
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="ownerAddressNumber">Número</Label>
+              <Input
+                id="ownerAddressNumber"
+                value={editForm.ownerAddressNumber}
+                onChange={(e) => setEditForm({ ...editForm, ownerAddressNumber: e.target.value })}
+                placeholder="123"
+              />
+            </div>
+            <div className="space-y-2 md:col-span-2">
+              <Label htmlFor="ownerAddressComplement">Complemento</Label>
+              <Input
+                id="ownerAddressComplement"
+                value={editForm.ownerAddressComplement}
+                onChange={(e) => setEditForm({ ...editForm, ownerAddressComplement: e.target.value })}
+                placeholder="Apto, Bloco..."
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="ownerNeighborhood">Bairro</Label>
+              <Input
+                id="ownerNeighborhood"
+                value={editForm.ownerNeighborhood}
+                onChange={(e) => setEditForm({ ...editForm, ownerNeighborhood: e.target.value })}
+                placeholder="Bairro"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="ownerCity">Cidade</Label>
+              <Input
+                id="ownerCity"
+                value={editForm.ownerCity}
+                onChange={(e) => setEditForm({ ...editForm, ownerCity: e.target.value })}
+                placeholder="Cidade"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="ownerState">Estado</Label>
+              <Select 
+                value={editForm.ownerState} 
+                onValueChange={(value) => setEditForm({ ...editForm, ownerState: value })}
+              >
+                <SelectTrigger id="ownerState">
+                  <SelectValue placeholder="UF" />
+                </SelectTrigger>
+                <SelectContent>
+                  {brazilianStates.map(state => (
+                    <SelectItem key={state} value={state}>{state}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
   };
 
   return (
@@ -318,7 +675,7 @@ export default function Vehicles() {
 
         {/* Vehicle Details Dialog */}
         <Dialog open={isDetailsOpen} onOpenChange={handleCloseDialog}>
-          <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
+          <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
             {selectedVehicle && (
               <>
                 <DialogHeader>
@@ -337,7 +694,7 @@ export default function Vehicles() {
                     )}
                   </div>
                   <DialogDescription>
-                    {isEditing ? 'Editando informações do veículo' : 'Informações detalhadas do veículo'}
+                    {isEditing ? 'Editando informações do veículo e cliente' : 'Informações detalhadas do veículo e cliente'}
                   </DialogDescription>
                 </DialogHeader>
 
@@ -470,25 +827,7 @@ export default function Vehicles() {
                   {/* Owner Information */}
                   <div>
                     <h4 className="font-semibold text-foreground mb-4">Proprietário</h4>
-                    {isEditing && editForm ? (
-                      <div className="space-y-2">
-                        <Label htmlFor="ownerName">Nome do Proprietário</Label>
-                        <Input
-                          id="ownerName"
-                          value={editForm.ownerName}
-                          onChange={(e) => setEditForm({ ...editForm, ownerName: e.target.value })}
-                          placeholder="Nome completo"
-                        />
-                      </div>
-                    ) : (
-                      <div className="flex items-start gap-3 p-3 rounded-lg bg-muted/50">
-                        <User className="h-5 w-5 text-muted-foreground mt-0.5" />
-                        <div>
-                          <p className="text-sm text-muted-foreground">Nome</p>
-                          <p className="font-medium">{selectedVehicle.ownerName}</p>
-                        </div>
-                      </div>
-                    )}
+                    {isEditing && editForm ? renderOwnerEditSection() : renderOwnerViewSection()}
                   </div>
 
                   <Separator />
