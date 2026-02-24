@@ -60,17 +60,17 @@ export default function Login() {
           <div className="flex items-center gap-4 mb-8">
               <img src={logoVistto} alt="Vistto" className="h-16 w-16 object-contain" />
               <div>
-                <h1 className="text-3xl font-bold">Vistto
+                <h1 className="text-3xl font-bold font-serif">Vistto
 
               </h1>
-                <p className="text-primary-foreground/80">Proteção Veicular</p>
+                <p className="text-primary-foreground/80 font-serif">Proteção Veicular</p>
             </div>
           </div>
           
-          <h2 className="text-4xl font-bold leading-tight mb-6">
+          <h2 className="text-4xl font-bold leading-tight mb-6 font-serif">
             Proteção completa para seu veículo
           </h2>
-          <p className="text-lg text-primary-foreground/80 mb-8 max-w-md">
+          <p className="text-lg text-primary-foreground/80 mb-8 max-w-md font-serif">
             Gerencie a proteção do seu veículo de forma simples e segura. 
             Realize vistorias online e acompanhe tudo em tempo real.
           </p>
@@ -78,15 +78,15 @@ export default function Login() {
           <div className="flex gap-8">
             <div>
               <p className="text-3xl font-bold">5.000+</p>
-              <p className="text-primary-foreground/70">Veículos protegidos</p>
+              <p className="text-primary-foreground/70 font-serif">Veículos protegidos</p>
             </div>
             <div>
               <p className="text-3xl font-bold">98%</p>
-              <p className="text-primary-foreground/70">Satisfação</p>
+              <p className="text-primary-foreground/70 font-serif">Satisfação</p>
             </div>
             <div>
               <p className="text-3xl font-bold">24/7</p>
-              <p className="text-primary-foreground/70">Suporte</p>
+              <p className="text-primary-foreground/70 font-serif">Suporte</p>
             </div>
           </div>
         </div>
