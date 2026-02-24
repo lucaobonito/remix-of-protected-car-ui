@@ -60,7 +60,9 @@ export default function Login() {
           <div className="flex items-center gap-4 mb-8">
               <img src={logoVistto} alt="Vistto" className="h-16 w-16 object-contain" />
               <div>
-                <h1 className="text-3xl font-bold">ViSTTO</h1>
+                <h1 className="text-3xl font-bold">Vistto
+
+              </h1>
                 <p className="text-primary-foreground/80">Proteção Veicular</p>
             </div>
           </div>
@@ -113,17 +115,15 @@ export default function Login() {
             <div className="mb-6">
               <Label className="text-sm font-medium text-foreground mb-3 block">Selecione seu perfil</Label>
               <div className="grid grid-cols-2 gap-3">
-                {roles.map((role) =>
-                <button
-                  key={role.value}
-                  type="button"
-                  onClick={() => setSelectedRole(role.value)}
-                  className={cn(
-                    'flex flex-col items-center gap-2 p-4 rounded-xl border-2 transition-all duration-200',
-                    selectedRole === role.value ?
-                    'border-primary bg-primary/5 text-primary' :
-                    'border-border bg-card hover:border-primary/50'
-                  )}>
+                {roles.map((role) => <button key={role.value}
+                type="button"
+                onClick={() => setSelectedRole(role.value)}
+                className={cn(
+                  'flex flex-col items-center gap-2 p-4 rounded-xl border-2 transition-all duration-200',
+                  selectedRole === role.value ?
+                  'border-primary bg-primary/5 text-primary' :
+                  'border-border bg-card hover:border-primary/50'
+                )}>
 
                     <role.icon className="h-6 w-6" />
                     <span className="text-xs font-medium">{role.label}</span>
