@@ -21,12 +21,13 @@ import {
   Users,
   Settings,
   LogOut,
-  Shield,
+  
   FileSearch,
   BarChart3,
 } from 'lucide-react';
 import { UserRole } from '@/contexts/AuthContext';
 import { cn } from '@/lib/utils';
+import logoVistto from '@/assets/logo_vistto.png';
 
 interface NavItem {
   title: string;
@@ -68,11 +69,9 @@ function MobileSidebarContent({ onNavigate }: { onNavigate?: () => void }) {
     <div className="flex h-full flex-col bg-sidebar text-sidebar-foreground">
       {/* Logo */}
       <div className="flex items-center gap-3 px-6 py-5 border-b border-sidebar-border">
-        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-sidebar-primary">
-          <Shield className="h-6 w-6 text-sidebar-primary-foreground" />
-        </div>
+        <img src={logoVistto} alt="Vistto" className="h-10 w-10 object-contain" />
         <div>
-          <h1 className="text-lg font-bold text-sidebar-foreground">Protected Car</h1>
+          <h1 className="text-lg font-bold text-sidebar-foreground">Vistto</h1>
           <p className="text-xs text-sidebar-foreground/60">Proteção Veicular</p>
         </div>
       </div>

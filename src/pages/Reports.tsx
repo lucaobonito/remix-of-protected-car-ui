@@ -241,7 +241,7 @@ export default function Reports() {
 
       // Aba 1: Resumo Executivo
       const resumoData: (string | number | undefined)[][] = [
-        ['RELATÓRIO GERENCIAL - PROTECTED CAR'],
+        ['RELATÓRIO GERENCIAL - VISTTO'],
         [`Período: ${selectedYear} - ${getPeriodLabel()}`],
         ['Gerado em: ' + dataAtual],
         [],

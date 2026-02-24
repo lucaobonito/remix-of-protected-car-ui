@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Shield, Eye, EyeOff, Briefcase } from 'lucide-react';
+import { Eye, EyeOff, Briefcase, Shield } from 'lucide-react';
+import logoVistto from '@/assets/logo_vistto.png';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -57,12 +58,10 @@ export default function Login() {
         
         <div className="relative z-10 flex flex-col justify-center px-16 text-primary-foreground">
           <div className="flex items-center gap-4 mb-8">
-            <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-primary-foreground/20 backdrop-blur">
-              <Shield className="h-10 w-10" />
-            </div>
-            <div>
-              <h1 className="text-3xl font-bold">Protected Car</h1>
-              <p className="text-primary-foreground/80">Proteção Veicular</p>
+              <img src={logoVistto} alt="Vistto" className="h-16 w-16 object-contain" />
+              <div>
+                <h1 className="text-3xl font-bold">Vistto</h1>
+                <p className="text-primary-foreground/80">Proteção Veicular</p>
             </div>
           </div>
           
@@ -101,10 +100,8 @@ export default function Login() {
           <div className="w-full max-w-md animate-fade-in">
             {/* Mobile Logo */}
             <div className="lg:hidden flex items-center gap-3 mb-8 justify-center">
-              <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary">
-                <Shield className="h-7 w-7 text-primary-foreground" />
-              </div>
-              <h1 className="text-2xl font-bold text-foreground">Protected Car</h1>
+              <img src={logoVistto} alt="Vistto" className="h-12 w-12 object-contain" />
+              <h1 className="text-2xl font-bold text-foreground">Vistto</h1>
             </div>
 
             <div className="text-center mb-8">
