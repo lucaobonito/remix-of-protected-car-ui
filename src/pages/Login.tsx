@@ -9,10 +9,10 @@ import { useAuth, UserRole } from '@/contexts/AuthContext';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { cn } from '@/lib/utils';
 
-const roles: { value: UserRole; label: string; icon: React.ElementType; description: string }[] = [
-  { value: 'admin', label: 'Administrador', icon: Shield, description: 'Acesso total ao sistema' },
-  { value: 'employee', label: 'Funcionário', icon: Briefcase, description: 'Realizar vistorias' },
-];
+const roles: {value: UserRole;label: string;icon: React.ElementType;description: string;}[] = [
+{ value: 'admin', label: 'Administrador', icon: Shield, description: 'Acesso total ao sistema' },
+{ value: 'employee', label: 'Funcionário', icon: Briefcase, description: 'Realizar vistorias' }];
+
 
 export default function Login() {
   const [email, setEmail] = useState('');
@@ -21,7 +21,7 @@ export default function Login() {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
-  
+
   const { login } = useAuth();
   const navigate = useNavigate();
 
@@ -60,7 +60,7 @@ export default function Login() {
           <div className="flex items-center gap-4 mb-8">
               <img src={logoVistto} alt="Vistto" className="h-16 w-16 object-contain" />
               <div>
-                <h1 className="text-3xl font-bold">Vistto</h1>
+                <h1 className="text-3xl font-bold">ViSTTO</h1>
                 <p className="text-primary-foreground/80">Proteção Veicular</p>
             </div>
           </div>
@@ -113,22 +113,22 @@ export default function Login() {
             <div className="mb-6">
               <Label className="text-sm font-medium text-foreground mb-3 block">Selecione seu perfil</Label>
               <div className="grid grid-cols-2 gap-3">
-                {roles.map((role) => (
-                  <button
-                    key={role.value}
-                    type="button"
-                    onClick={() => setSelectedRole(role.value)}
-                    className={cn(
-                      'flex flex-col items-center gap-2 p-4 rounded-xl border-2 transition-all duration-200',
-                      selectedRole === role.value
-                        ? 'border-primary bg-primary/5 text-primary'
-                        : 'border-border bg-card hover:border-primary/50'
-                    )}
-                  >
+                {roles.map((role) =>
+                <button
+                  key={role.value}
+                  type="button"
+                  onClick={() => setSelectedRole(role.value)}
+                  className={cn(
+                    'flex flex-col items-center gap-2 p-4 rounded-xl border-2 transition-all duration-200',
+                    selectedRole === role.value ?
+                    'border-primary bg-primary/5 text-primary' :
+                    'border-border bg-card hover:border-primary/50'
+                  )}>
+
                     <role.icon className="h-6 w-6" />
                     <span className="text-xs font-medium">{role.label}</span>
                   </button>
-                ))}
+                )}
               </div>
             </div>
 
@@ -142,8 +142,8 @@ export default function Login() {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   required
-                  className="h-12"
-                />
+                  className="h-12" />
+
               </div>
 
               <div className="space-y-2">
@@ -156,41 +156,41 @@ export default function Login() {
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     required
-                    className="h-12 pr-12"
-                  />
+                    className="h-12 pr-12" />
+
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
-                  >
+                    className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors">
+
                     {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
                   </button>
                 </div>
               </div>
 
-              {error && (
-                <p className="text-sm text-destructive bg-destructive/10 px-4 py-2 rounded-lg">
+              {error &&
+              <p className="text-sm text-destructive bg-destructive/10 px-4 py-2 rounded-lg">
                   {error}
                 </p>
-              )}
+              }
 
               <Button
                 type="submit"
                 className="w-full h-12 text-base font-medium"
                 size="lg"
-                disabled={isLoading}
-              >
-                {isLoading ? (
-                  <span className="flex items-center gap-2">
+                disabled={isLoading}>
+
+                {isLoading ?
+                <span className="flex items-center gap-2">
                     <svg className="animate-spin h-5 w-5" viewBox="0 0 24 24">
                       <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
                       <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
                     </svg>
                     Entrando...
-                  </span>
-                ) : (
-                  'Entrar'
-                )}
+                  </span> :
+
+                'Entrar'
+                }
               </Button>
             </form>
 
@@ -200,6 +200,6 @@ export default function Login() {
           </div>
         </div>
       </div>
-    </div>
-  );
+    </div>);
+
 }
