@@ -1,26 +1,28 @@
 
 
-## Plano: Substituir Logo por Nova Imagem
+## Plano: Clarear o Azul do Painel Esquerdo da Tela de Login
 
-### Alteracoes
+### Alteracao
 
-Substituir o logo atual (`logo_vistto.png`) pela nova imagem (`CHADICE.png`) em todos os locais onde e utilizado.
+**Arquivo:** `src/pages/Login.tsx` (linha 56)
 
-#### 1. Copiar nova imagem
-- Copiar `user-uploads://CHADICE.png` para `src/assets/logo_vistto.png` (sobrescreve o atual)
-- Copiar tambem para `public/logo_vistto.png` (favicon)
+Substituir a classe `gradient-primary` por um gradiente azul mais claro inline:
 
-Nenhuma alteracao de codigo e necessaria, pois todos os componentes ja importam `logo_vistto.png`. Apenas o arquivo de imagem sera substituido.
+```tsx
+// DE:
+<div className="hidden lg:flex lg:w-1/2 gradient-primary relative overflow-hidden">
 
-### Arquivos Afetados
+// PARA:
+<div className="hidden lg:flex lg:w-1/2 bg-gradient-to-br from-blue-400 via-blue-500 to-blue-400 relative overflow-hidden">
+```
 
-| Arquivo | Acao |
-|---------|------|
-| `src/assets/logo_vistto.png` | Substituido pela nova imagem |
-| `public/logo_vistto.png` | Substituido pela nova imagem |
+### Resultado
 
-### Locais que serao atualizados automaticamente
-- Login (painel esquerdo + logo mobile)
-- Sidebar desktop e mobile
-- Favicon do navegador
+O painel esquerdo da pagina de login passara de um azul escuro/intenso para um azul mais claro e suave, mantendo o efeito de gradiente.
+
+### Detalhes Tecnicos
+
+- Troca a classe utilitaria `gradient-primary` (que usa `--primary: 217 91% 40%`, um azul escuro) por classes Tailwind de azul claro (`blue-400`/`blue-500`)
+- Apenas 1 linha alterada
+- Nenhum outro arquivo e afetado
 
