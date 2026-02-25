@@ -22,6 +22,7 @@ import Rankings from "./pages/Rankings";
 import Users from "./pages/Users";
 import Settings from "./pages/Settings";
 import AuditLog from "./pages/AuditLog";
+import Assistance from "./pages/Assistance";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -53,6 +54,7 @@ const App = () => (
                           <Route path="/users" element={<Users />} />
                           <Route path="/settings" element={<Settings />} />
                           <Route path="/audit" element={<AuditLog />} />
+                          <Route path="/assistance" element={<Assistance />} />
                           <Route path="*" element={<NotFound />} />
                         </Routes>
                       </NavigationHistoryProvider>
