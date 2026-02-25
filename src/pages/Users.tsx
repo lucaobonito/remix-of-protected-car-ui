@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import { Search, Plus, MoreVertical, Shield, Briefcase, User, Mail, Phone, Trash2, Calendar, Eye, Edit } from 'lucide-react';
+import { Search, Plus, MoreVertical, Shield, Briefcase, User, Mail, Phone, Trash2, Calendar, Eye, Edit, Headphones, AlertCircle } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -36,6 +36,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Separator } from '@/components/ui/separator';
 import { Switch } from '@/components/ui/switch';
 import { useAudit } from '@/contexts/AuditContext';
+import { mockAssistanceData } from '@/data/mockAssistanceData';
 
 interface UserData {
   id: string;
@@ -506,6 +507,66 @@ export default function Users() {
                     <p className="font-medium">{formatDate(selectedUser.createdAt)}</p>
                   </div>
                 </div>
+              </div>
+
+              <Separator />
+
+              {/* Chamados em Atendimento */}
+              <div className="space-y-2">
+                <h4 className="text-sm font-semibold flex items-center gap-2">
+                  <Headphones className="h-4 w-4 text-primary" />
+                  Chamados em Atendimento
+                </h4>
+                {(() => {
+                  const userTickets = mockAssistanceData.filter(t => t.assignedTo === selectedUser.id);
+                  if (userTickets.length === 0) {
+                    return <p className="text-sm text-muted-foreground">Nenhum chamado em atendimento.</p>;
+                  }
+                  return (
+                    <div className="space-y-2">
+                      {userTickets.map(ticket => (
+                        <div key={ticket.id} className="flex items-center justify-between rounded-lg border p-3">
+                          <div>
+                            <p className="text-sm font-medium">{ticket.vehicleBrand} {ticket.vehicleModel}</p>
+                            <p className="text-xs text-muted-foreground">{ticket.plate} • {new Date(ticket.createdAt).toLocaleDateString('pt-BR')}</p>
+                          </div>
+                          <Badge variant={ticket.status === 'atendido' ? 'success' : 'warning'}>
+                            {ticket.status === 'atendido' ? 'Atendido' : 'Pendente'}
+                          </Badge>
+                        </div>
+                      ))}
+                    </div>
+                  );
+                })()}
+              </div>
+
+              <Separator />
+
+              {/* Chamados Disponíveis */}
+              <div className="space-y-2">
+                <h4 className="text-sm font-semibold flex items-center gap-2">
+                  <AlertCircle className="h-4 w-4 text-muted-foreground" />
+                  Chamados Disponíveis (sem responsável)
+                </h4>
+                {(() => {
+                  const availableTickets = mockAssistanceData.filter(t => t.assignedTo === null && t.status === 'pendente');
+                  if (availableTickets.length === 0) {
+                    return <p className="text-sm text-muted-foreground">Nenhum chamado disponível.</p>;
+                  }
+                  return (
+                    <div className="space-y-2">
+                      {availableTickets.map(ticket => (
+                        <div key={ticket.id} className="flex items-center justify-between rounded-lg border p-3">
+                          <div>
+                            <p className="text-sm font-medium">{ticket.requesterName}</p>
+                            <p className="text-xs text-muted-foreground">{ticket.vehicleBrand} {ticket.vehicleModel} • {ticket.plate}</p>
+                          </div>
+                          <Badge variant="warning">Pendente</Badge>
+                        </div>
+                      ))}
+                    </div>
+                  );
+                })()}
               </div>
             </div>
           )}

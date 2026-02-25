@@ -68,6 +68,11 @@ export const routeConfig: Record<string, RouteConfig> = {
     parent: '/dashboard',
     icon: ScrollText,
   },
+  '/assistance': {
+    title: 'Assistência',
+    parent: '/dashboard',
+    icon: ScrollText,
+  },
 };
 
 export interface BreadcrumbItem {
