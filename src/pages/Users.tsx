@@ -69,12 +69,23 @@ export default function Users() {
   const [userToDelete, setUserToDelete] = useState<UserData | null>(null);
   const [selectedUser, setSelectedUser] = useState<UserData | null>(null);
   const [editUser, setEditUser] = useState<UserData | null>(null);
+  const [tickets, setTickets] = useState(mockAssistanceData);
   const [newUser, setNewUser] = useState({
     name: '',
     email: '',
     phone: '',
     role: 'employee' as 'admin' | 'employee'
   });
+
+  const handleAssignTicket = (ticketId: string) => {
+    if (!selectedUser) return;
+    setTickets(prev => prev.map(t =>
+      t.id === ticketId
+        ? { ...t, assignedTo: selectedUser.id, assignedToName: selectedUser.name }
+        : t
+    ));
+    toast({ title: "Chamado atribuído", description: `Chamado atribuído a ${selectedUser.name}` });
+  };
 
   const filteredUsers = users.filter(user => {
     const matchesSearch = 
@@ -518,7 +529,7 @@ export default function Users() {
                   Chamados em Atendimento
                 </h4>
                 {(() => {
-                  const userTickets = mockAssistanceData.filter(t => t.assignedTo === selectedUser.id);
+                  const userTickets = tickets.filter(t => t.assignedTo === selectedUser.id);
                   if (userTickets.length === 0) {
                     return <p className="text-sm text-muted-foreground">Nenhum chamado em atendimento.</p>;
                   }
@@ -549,7 +560,7 @@ export default function Users() {
                   Chamados Disponíveis (sem responsável)
                 </h4>
                 {(() => {
-                  const availableTickets = mockAssistanceData.filter(t => t.assignedTo === null && t.status === 'pendente');
+                  const availableTickets = tickets.filter(t => t.assignedTo === null && t.status === 'pendente');
                   if (availableTickets.length === 0) {
                     return <p className="text-sm text-muted-foreground">Nenhum chamado disponível.</p>;
                   }
@@ -561,7 +572,7 @@ export default function Users() {
                             <p className="text-sm font-medium">{ticket.requesterName}</p>
                             <p className="text-xs text-muted-foreground">{ticket.vehicleBrand} {ticket.vehicleModel} • {ticket.plate}</p>
                           </div>
-                          <Badge variant="warning">Pendente</Badge>
+                          <Button size="sm" variant="outline" onClick={() => handleAssignTicket(ticket.id)}>Atribuir</Button>
                         </div>
                       ))}
                     </div>
