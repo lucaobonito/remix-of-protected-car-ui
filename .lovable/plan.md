@@ -1,54 +1,69 @@
 
-
-## Plano: Botao de Atribuir Chamado no Dialog de Detalhes do Usuario
+## Plano: Aba de Assistencia para Funcionarios
 
 ### Resumo
 
-Adicionar um botao "Atribuir" ao lado de cada chamado disponivel (sem responsavel) no dialog de detalhes do usuario. Ao clicar, o chamado sera atribuido ao usuario selecionado, atualizando o estado local e mostrando um toast de confirmacao.
+Permitir que funcionarios (role `employee`) acessem a pagina de Assistencia, vejam todos os chamados abertos, quem esta atendendo cada caso, e possam pegar chamados disponiveis para si.
 
 ### Alteracoes
 
-#### 1. `src/data/mockAssistanceData.ts`
-- Alterar `mockAssistanceData` de `const` para `let` (exportar mutavel) **OU** manter const e gerenciar estado no componente
+#### 1. `src/components/AppSidebar.tsx` (linha 43)
+- Alterar o item "Assistencia" de `roles: ['admin']` para `roles: ['admin', 'employee']`
 
-#### 2. `src/pages/Users.tsx`
-- Adicionar estado local `tickets` com `useState` inicializado a partir de `mockAssistanceData`
-- Na secao "Chamados Disponiveis", adicionar um botao "Atribuir" em cada item
-- Ao clicar no botao:
-  - Atualizar `assignedTo` para o `selectedUser.id` e `assignedToName` para `selectedUser.name`
-  - Exibir toast: "Chamado atribuido a [nome do usuario]"
-- A secao "Chamados em Atendimento" tambem passara a usar o estado local `tickets` para refletir as atribuicoes em tempo real
+#### 2. `src/components/AppLayout.tsx` (linha 47)
+- Alterar o item "Assistencia" de `roles: ['admin']` para `roles: ['admin', 'employee']`
+
+#### 3. `src/pages/Assistance.tsx`
+- Adicionar estado local `tickets` com `useState(mockAssistanceData)` para permitir atribuicao em tempo real
+- Obter o usuario logado via `useAuth()`
+- Adicionar handler `handleAssignTicket` que atribui o chamado ao usuario logado (`user.id` / `user.name`)
+- Reorganizar a pagina com **3 abas** usando componente `Tabs`:
+  - **"Todos os Chamados"**: tabela atual com todos os chamados, filtros e cards de resumo
+  - **"Meus Chamados"**: chamados atribuidos ao usuario logado (`assignedTo === user.id`)
+  - **"Disponiveis"**: chamados sem responsavel (`assignedTo === null && status === 'pendente'`) com botao "Pegar Chamado"
+- Na coluna "Responsavel" da tabela principal, mostrar quem esta atendendo cada caso
+- Na aba "Disponiveis", cada item tera um botao "Pegar Chamado" que chama `handleAssignTicket`
+- Toast de confirmacao ao pegar um chamado
+- Para admin, as 3 abas aparecem normalmente; para employee, tambem
 
 ### Detalhes Tecnicos
 
-**Estado local no Users.tsx:**
-```tsx
-const [tickets, setTickets] = useState(mockAssistanceData);
+**Estado e handler:**
 ```
+const [tickets, setTickets] = useState(mockAssistanceData);
+const { user } = useAuth();
 
-**Handler de atribuicao:**
-```tsx
 const handleAssignTicket = (ticketId: string) => {
-  if (!selectedUser) return;
-  setTickets(prev => prev.map(t => 
-    t.id === ticketId 
-      ? { ...t, assignedTo: selectedUser.id, assignedToName: selectedUser.name }
+  if (!user) return;
+  setTickets(prev => prev.map(t =>
+    t.id === ticketId
+      ? { ...t, assignedTo: user.id, assignedToName: user.name }
       : t
   ));
-  toast({ title: "Chamado atribuído", description: `Chamado atribuído a ${selectedUser.name}` });
+  toast.success(`Chamado atribuído a você`);
 };
 ```
 
-**Botao no item de chamado disponivel (linha ~559-565):**
-- Substituir o `Badge "Pendente"` por um `Button` com texto "Atribuir" que chama `handleAssignTicket(ticket.id)`
+**Estrutura de abas:**
+```
+<Tabs defaultValue="todos">
+  <TabsList>
+    <TabsTrigger value="todos">Todos</TabsTrigger>
+    <TabsTrigger value="meus">Meus Chamados</TabsTrigger>
+    <TabsTrigger value="disponiveis">Disponíveis</TabsTrigger>
+  </TabsList>
+  <TabsContent value="todos">... tabela completa ...</TabsContent>
+  <TabsContent value="meus">... filtrado por user.id ...</TabsContent>
+  <TabsContent value="disponiveis">... sem responsavel + botao ...</TabsContent>
+</Tabs>
+```
 
-**Filtros usam `tickets` ao inves de `mockAssistanceData`:**
-- `userTickets = tickets.filter(t => t.assignedTo === selectedUser.id)`
-- `availableTickets = tickets.filter(t => t.assignedTo === null && t.status === 'pendente')`
+**Filtros usam `tickets` (estado local) em vez de `mockAssistanceData` direto.**
 
 ### Arquivos Afetados
 
 | Arquivo | Acao |
 |---------|------|
-| `src/pages/Users.tsx` | Adicionar estado `tickets`, handler `handleAssignTicket`, botao "Atribuir" |
-
+| `src/components/AppSidebar.tsx` | Liberar acesso para employee |
+| `src/components/AppLayout.tsx` | Liberar acesso para employee |
+| `src/pages/Assistance.tsx` | Adicionar abas, estado local, botao "Pegar Chamado" |
