@@ -1,58 +1,54 @@
 
 
-## Plano: Pagina de Assistencia + Integracao com Usuarios
+## Plano: Botao de Atribuir Chamado no Dialog de Detalhes do Usuario
 
 ### Resumo
 
-Criar a pagina "Assistencia" com sistema de chamados que inclui atribuicao de responsavel, e integrar informacoes de chamados na pagina de Usuarios (mostrando chamados que cada usuario esta atendendo e chamados disponiveis sem responsavel).
+Adicionar um botao "Atribuir" ao lado de cada chamado disponivel (sem responsavel) no dialog de detalhes do usuario. Ao clicar, o chamado sera atribuido ao usuario selecionado, atualizando o estado local e mostrando um toast de confirmacao.
 
----
-
-### Arquivos a Criar
+### Alteracoes
 
 #### 1. `src/data/mockAssistanceData.ts`
-Dados mock de chamados com campos:
-- `id`, `requesterName`, `vehicleBrand`, `vehicleModel`, `plate`, `status` ("atendido" | "pendente"), `assignedTo` (id do usuario responsavel ou `null` para chamados sem responsavel), `assignedToName`, `createdAt`, `description`
-- Aproximadamente 10 registros, alguns com `assignedTo` preenchido e outros com `null`
+- Alterar `mockAssistanceData` de `const` para `let` (exportar mutavel) **OU** manter const e gerenciar estado no componente
 
-#### 2. `src/pages/Assistance.tsx`
-Nova pagina com:
-- Cards de resumo: Total, Pendentes, Atendidos, Sem Responsavel
-- Filtros por status e busca por nome/placa
-- Tabela com colunas: Solicitante, Veiculo, Placa, Responsavel (quem esta atendendo), Status, Data
-- Chamados sem responsavel mostram "Nao atribuido" em cinza
-- Badges: verde para Atendido, amarelo para Pendente
-
----
-
-### Arquivos a Modificar
-
-#### 3. `src/pages/Users.tsx`
-Na area de detalhes do usuario (dialog "Ver Detalhes"), adicionar:
-- **Secao "Chamados em Atendimento"**: lista dos chamados que aquele usuario esta resolvendo atualmente (filtrados por `assignedTo === user.id`)
-- **Secao "Chamados Disponiveis"**: lista de chamados pendentes sem responsavel (`assignedTo === null && status === 'pendente'`), com botao para o usuario assumir o chamado
-- Importar os dados mock de assistencia
-
-#### 4. `src/App.tsx`
-- Adicionar rota `/assistance`
-
-#### 5. `src/components/AppSidebar.tsx`
-- Adicionar item "Assistencia" com icone `Headphones`, rota `/assistance`, role `['admin']`
-
-#### 6. `src/components/AppLayout.tsx`
-- Adicionar item "Assistencia" no menu mobile
-
-#### 7. `src/config/routes.ts`
-- Adicionar `/assistance` no `routeConfig`
-
----
+#### 2. `src/pages/Users.tsx`
+- Adicionar estado local `tickets` com `useState` inicializado a partir de `mockAssistanceData`
+- Na secao "Chamados Disponiveis", adicionar um botao "Atribuir" em cada item
+- Ao clicar no botao:
+  - Atualizar `assignedTo` para o `selectedUser.id` e `assignedToName` para `selectedUser.name`
+  - Exibir toast: "Chamado atribuido a [nome do usuario]"
+- A secao "Chamados em Atendimento" tambem passara a usar o estado local `tickets` para refletir as atribuicoes em tempo real
 
 ### Detalhes Tecnicos
 
-- Os dados mock serao compartilhados entre `Assistance.tsx` e `Users.tsx` via import do mesmo arquivo
-- No dialog de detalhes do usuario, as secoes de chamados aparecerao abaixo das informacoes de contato, separadas por `Separator`
-- Chamados em atendimento mostram: veiculo, placa e data
-- Chamados disponiveis mostram: solicitante, veiculo, placa
-- Icone: `Headphones` do lucide-react
-- Componentes reutilizados: `Table`, `Card`, `Badge`, `Select`, `Input`
+**Estado local no Users.tsx:**
+```tsx
+const [tickets, setTickets] = useState(mockAssistanceData);
+```
+
+**Handler de atribuicao:**
+```tsx
+const handleAssignTicket = (ticketId: string) => {
+  if (!selectedUser) return;
+  setTickets(prev => prev.map(t => 
+    t.id === ticketId 
+      ? { ...t, assignedTo: selectedUser.id, assignedToName: selectedUser.name }
+      : t
+  ));
+  toast({ title: "Chamado atribuído", description: `Chamado atribuído a ${selectedUser.name}` });
+};
+```
+
+**Botao no item de chamado disponivel (linha ~559-565):**
+- Substituir o `Badge "Pendente"` por um `Button` com texto "Atribuir" que chama `handleAssignTicket(ticket.id)`
+
+**Filtros usam `tickets` ao inves de `mockAssistanceData`:**
+- `userTickets = tickets.filter(t => t.assignedTo === selectedUser.id)`
+- `availableTickets = tickets.filter(t => t.assignedTo === null && t.status === 'pendente')`
+
+### Arquivos Afetados
+
+| Arquivo | Acao |
+|---------|------|
+| `src/pages/Users.tsx` | Adicionar estado `tickets`, handler `handleAssignTicket`, botao "Atribuir" |
 
