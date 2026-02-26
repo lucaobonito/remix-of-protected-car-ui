@@ -40,7 +40,7 @@ const navItems: NavItem[] = [
   { title: 'Relatórios', icon: BarChart3, href: '/reports', roles: ['admin'] },
   { title: 'Rankings', icon: Trophy, href: '/rankings', roles: ['admin'] },
   { title: 'Usuários', icon: Users, href: '/users', roles: ['admin'] },
-  { title: 'Assistência', icon: Headphones, href: '/assistance', roles: ['admin'] },
+  { title: 'Assistência', icon: Headphones, href: '/assistance', roles: ['admin', 'employee'] },
   { title: 'Auditoria', icon: FileText, href: '/audit', roles: ['admin'] },
   { title: 'Configurações', icon: Settings, href: '/settings', roles: ['admin', 'employee'] },
 ];
