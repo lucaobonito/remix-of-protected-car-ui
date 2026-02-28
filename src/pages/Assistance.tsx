@@ -14,7 +14,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { Search, Headphones, Clock, CheckCircle2, UserX, HandHelping } from 'lucide-react';
+import { Search, Headphones, Clock, CheckCircle2, UserX, HandHelping, Undo2 } from 'lucide-react';
 import { mockAssistanceData } from '@/data/mockAssistanceData';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
@@ -33,6 +33,15 @@ export default function Assistance() {
         : t
     ));
     toast.success('Chamado atribuído a você');
+  };
+
+  const handleReleaseTicket = (ticketId: string) => {
+    setTickets(prev => prev.map(t =>
+      t.id === ticketId
+        ? { ...t, assignedTo: null, assignedToName: null }
+        : t
+    ));
+    toast.success('Chamado devolvido para a fila');
   };
 
   const filteredTickets = tickets.filter(ticket => {
@@ -54,7 +63,7 @@ export default function Assistance() {
   const formatDate = (dateStr: string) =>
     new Date(dateStr).toLocaleDateString('pt-BR');
 
-  const TicketTable = ({ data, showAssignButton = false }: { data: typeof tickets; showAssignButton?: boolean }) => (
+  const TicketTable = ({ data, showAssignButton = false, showReleaseButton = false }: { data: typeof tickets; showAssignButton?: boolean; showReleaseButton?: boolean }) => (
     <Card>
       <CardContent className="p-0">
         <Table>
@@ -66,7 +75,7 @@ export default function Assistance() {
               <TableHead>Responsável</TableHead>
               <TableHead>Status</TableHead>
               <TableHead>Data</TableHead>
-              {showAssignButton && <TableHead className="text-right">Ação</TableHead>}
+              {(showAssignButton || showReleaseButton) && <TableHead className="text-right">Ação</TableHead>}
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -98,11 +107,19 @@ export default function Assistance() {
                     </Button>
                   </TableCell>
                 )}
+                {showReleaseButton && (
+                  <TableCell className="text-right">
+                    <Button size="sm" variant="outline" onClick={() => handleReleaseTicket(ticket.id)}>
+                      <Undo2 className="h-4 w-4 mr-1" />
+                      Devolver
+                    </Button>
+                  </TableCell>
+                )}
               </TableRow>
             ))}
             {data.length === 0 && (
               <TableRow>
-                <TableCell colSpan={showAssignButton ? 7 : 6} className="text-center py-8 text-muted-foreground">
+                <TableCell colSpan={(showAssignButton || showReleaseButton) ? 7 : 6} className="text-center py-8 text-muted-foreground">
                   Nenhum chamado encontrado
                 </TableCell>
               </TableRow>
@@ -202,7 +219,7 @@ export default function Assistance() {
           </TabsContent>
 
           <TabsContent value="meus" className="mt-4">
-            <TicketTable data={myTickets} />
+            <TicketTable data={myTickets} showReleaseButton />
           </TabsContent>
 
           <TabsContent value="disponiveis" className="mt-4">
