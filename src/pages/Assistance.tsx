@@ -7,21 +7,23 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
+  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from '@/components/ui/table';
-import { Search, Headphones, Clock, CheckCircle2, UserX, HandHelping, Undo2 } from 'lucide-react';
+import { Search, Headphones, Clock, CheckCircle2, UserX, HandHelping, Undo2, Truck, History, Users, MapPin } from 'lucide-react';
 import { mockAssistanceData } from '@/data/mockAssistanceData';
+import type { AssistanceTicket, TrackingStatus } from '@/data/mockAssistanceData';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
+import { TowRequestTab } from '@/components/assistance/TowRequestTab';
+import { HistoryTab } from '@/components/assistance/HistoryTab';
+import { PartnersTab } from '@/components/assistance/PartnersTab';
+import { TrackingTab } from '@/components/assistance/TrackingTab';
+
+const trackingSteps: TrackingStatus[] = ['aguardando', 'a_caminho', 'no_local', 'concluido'];
 
 export default function Assistance() {
   const { user } = useAuth();
-  const [tickets, setTickets] = useState(mockAssistanceData);
+  const [tickets, setTickets] = useState<AssistanceTicket[]>(mockAssistanceData);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
 
@@ -42,6 +44,26 @@ export default function Assistance() {
         : t
     ));
     toast.success('Chamado devolvido para a fila');
+  };
+
+  const handleCreateTicket = (ticket: AssistanceTicket) => {
+    setTickets(prev => [ticket, ...prev]);
+  };
+
+  const handleAdvanceStatus = (ticketId: string) => {
+    setTickets(prev => prev.map(t => {
+      if (t.id !== ticketId) return t;
+      const idx = trackingSteps.indexOf(t.trackingStatus);
+      if (idx >= trackingSteps.length - 1) return t;
+      const next = trackingSteps[idx + 1];
+      return {
+        ...t,
+        trackingStatus: next,
+        status: next === 'concluido' ? 'atendido' as const : t.status,
+        closedAt: next === 'concluido' ? new Date().toISOString().split('T')[0] : t.closedAt,
+      };
+    }));
+    toast.success('Status atualizado');
   };
 
   const filteredTickets = tickets.filter(ticket => {
@@ -183,14 +205,25 @@ export default function Assistance() {
 
         {/* Tabs */}
         <Tabs defaultValue="todos">
-          <TabsList>
-            <TabsTrigger value="todos">Todos os Chamados</TabsTrigger>
-            <TabsTrigger value="meus">Meus Chamados ({myTickets.length})</TabsTrigger>
+          <TabsList className="flex-wrap h-auto gap-1">
+            <TabsTrigger value="todos">Todos</TabsTrigger>
+            <TabsTrigger value="meus">Meus ({myTickets.length})</TabsTrigger>
             <TabsTrigger value="disponiveis">Disponíveis ({availableTickets.length})</TabsTrigger>
+            <TabsTrigger value="guincho" className="gap-1">
+              <Truck className="h-3.5 w-3.5" /> Guincho
+            </TabsTrigger>
+            <TabsTrigger value="historico" className="gap-1">
+              <History className="h-3.5 w-3.5" /> Histórico
+            </TabsTrigger>
+            <TabsTrigger value="parceiros" className="gap-1">
+              <Users className="h-3.5 w-3.5" /> Parceiros
+            </TabsTrigger>
+            <TabsTrigger value="rastreamento" className="gap-1">
+              <MapPin className="h-3.5 w-3.5" /> Rastreamento
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="todos" className="space-y-4 mt-4">
-            {/* Filters */}
             <div className="flex flex-col md:flex-row gap-4">
               <div className="relative flex-1 max-w-md">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -224,6 +257,22 @@ export default function Assistance() {
 
           <TabsContent value="disponiveis" className="mt-4">
             <TicketTable data={availableTickets} showAssignButton />
+          </TabsContent>
+
+          <TabsContent value="guincho" className="mt-4">
+            <TowRequestTab onCreateTicket={handleCreateTicket} />
+          </TabsContent>
+
+          <TabsContent value="historico" className="mt-4">
+            <HistoryTab tickets={tickets} />
+          </TabsContent>
+
+          <TabsContent value="parceiros" className="mt-4">
+            <PartnersTab />
+          </TabsContent>
+
+          <TabsContent value="rastreamento" className="mt-4">
+            <TrackingTab tickets={tickets} onAdvanceStatus={handleAdvanceStatus} />
           </TabsContent>
         </Tabs>
       </div>
